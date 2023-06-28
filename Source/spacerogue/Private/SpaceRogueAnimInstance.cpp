@@ -4,6 +4,7 @@
 #include "SpaceRogueAnimInstance.h"
 #include "SpaceRogueCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 
 
 void USpaceRogueAnimInstance::UpdateAnimationProperties(float DeltaTime)
@@ -30,7 +31,18 @@ void USpaceRogueAnimInstance::UpdateAnimationProperties(float DeltaTime)
 			bIsAccelerating = false;
 		}
 
+		FRotator AimRotation = SpaceRogueCharacter->GetBaseAimRotation();
+		FRotator MovementRotation = UKismetMathLibrary::MakeRotFromX(SpaceRogueCharacter->GetVelocity());
+		MovementOffsetYaw = UKismetMathLibrary::NormalizedDeltaRotator(MovementRotation, AimRotation).Yaw;
+		
+		if (SpaceRogueCharacter->GetVelocity().Size() > 0.f)
+		{
+			LastMovementOffsetYaw = MovementOffsetYaw;
+		}
+		
+		
 	}
+	
 }
 
 void USpaceRogueAnimInstance::NativeInitializeAnimation()

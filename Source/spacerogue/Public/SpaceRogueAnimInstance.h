@@ -22,13 +22,21 @@ private:
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category=Movement,meta=(AllowPrivateAccess="true"))
 	class ASpaceRogueCharacter* SpaceRogueCharacter;
 
-	UPROPERTY(VisibleAnyWhere,BlueprintReadOnly,Category=Movement, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category=Movement, meta = (AllowPrivateAccess = "true"))
 	float Speed;
 
-	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	bool bIsInAir;
 
-	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess = "true"))
 	bool bIsAccelerating;
 
+	/** offset yaw used for strafing */
+	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
+	float MovementOffsetYaw;
+	
+
+	/** offset yaw used for strafing */
+	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
+		float LastMovementOffsetYaw;
 };
