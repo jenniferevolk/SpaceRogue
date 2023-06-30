@@ -39,4 +39,9 @@ private:
 	/** offset yaw used for strafing */
 	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
 		float LastMovementOffsetYaw;
+
+	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
+		bool bAiming;
+
+
 };

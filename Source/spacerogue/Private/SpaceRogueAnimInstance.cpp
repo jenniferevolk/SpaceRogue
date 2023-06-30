@@ -39,6 +39,7 @@ void USpaceRogueAnimInstance::UpdateAnimationProperties(float DeltaTime)
 		{
 			LastMovementOffsetYaw = MovementOffsetYaw;
 		}
+		bAiming = SpaceRogueCharacter->GetAiming();
 		
 		
 	}

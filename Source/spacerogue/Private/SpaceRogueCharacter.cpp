@@ -14,7 +14,32 @@
 // Sets default values
 ASpaceRogueCharacter::ASpaceRogueCharacter():
 	BaseTurnRate(45.f),
-	BaseLookUpRate(45.f)
+	BaseLookUpRate(45.f),
+
+	//Camera field of view values
+	CameraDefaultFOV(0.f),
+	CameraZoomedFOV(35.f),
+	CameraCurrentFOV(0.f),
+	ZoomInterpSpeed(20.f),
+	//turn rates for aiming and not aiming
+	HipTurnRate(90.0f),
+	HipLookUpRate(90.0f),
+	AimingTurnRate(20.f),
+	AimingLookUpRate(20.f),
+	bAiming(false),
+	MouseHipTurnRate(1.0f),
+	MouseHipLookUpRate(1.0f),
+	MouseAimingTurnRate(0.2f),
+	MouseAimingLookUpRate(0.2f),
+	//crosshair spread factors
+	CrosshairSpreadMultiplier(0.f),
+	CrosshairVelocityFactor(0.f),
+	CrosshairInAirFactor(0.f),
+	CrosshairAimFactor(0.f),
+	CrosshairShootingFactor(0.f),
+	//bullet fire timer variables
+	ShootTimeDuration(0.05f),
+	bFiringBullet(false)
 {
 		// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -23,9 +48,9 @@ ASpaceRogueCharacter::ASpaceRogueCharacter():
 	//create a camera boom(pulls in towards the character if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(GetRootComponent());
-	CameraBoom->TargetArmLength = 300.f;       //the camera follows at this distance behind the character
+	CameraBoom->TargetArmLength = 180.f;       //the camera follows at this distance behind the character
 	CameraBoom->bUsePawnControlRotation = true;  //rotate the arm based on the controller
-	CameraBoom->SocketOffset = FVector(0.f, 50.f, 50.f);
+	CameraBoom->SocketOffset = FVector(0.f, 50.f, 70.f);
 
 	//create a follow camera
 	FollowCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FollowCamera"));
@@ -47,6 +72,11 @@ ASpaceRogueCharacter::ASpaceRogueCharacter():
 void ASpaceRogueCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	if (FollowCamera)
+	{
+		CameraDefaultFOV = GetFollowCamera()->FieldOfView;
+		CameraCurrentFOV = CameraDefaultFOV;
+	}
 	
 }
 //--------------------------------------------------------------------------------
@@ -123,6 +153,9 @@ bool ASpaceRogueCharacter::GetBeamEndLocation(
 void ASpaceRogueCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	CameraInterpZoom(DeltaTime);
+	SetLookRates();
+	CalculateCrosshairSpread(DeltaTime);
 
 }
 
@@ -138,13 +171,22 @@ void ASpaceRogueCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	PlayerInputComponent->BindAxis("TurnRate", this, &ASpaceRogueCharacter::TurnAtRate);
 	PlayerInputComponent->BindAxis("LookUpRate", this, &ASpaceRogueCharacter::LookUpAtRate);
 
-	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
-	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
+	PlayerInputComponent->BindAxis("Turn", this, &ASpaceRogueCharacter::Turn);
+	PlayerInputComponent->BindAxis("LookUp", this, &ASpaceRogueCharacter::LookUp);
 
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
 	PlayerInputComponent->BindAction("FireButton", IE_Pressed, this, &ASpaceRogueCharacter::FireWeapon);
+
+	PlayerInputComponent->BindAction("AimingButton", IE_Pressed, this, &ASpaceRogueCharacter::AimingButtonPressed);
+	PlayerInputComponent->BindAction("AimingButton", IE_Released, this, &ASpaceRogueCharacter::AimingButtonReleased);
+	
+}
+
+float ASpaceRogueCharacter::GetCrosshairSpreadMultiplier() const
+{
+	return CrosshairSpreadMultiplier;
 }
 
 void ASpaceRogueCharacter::MoveForward(float Value)
@@ -180,6 +222,7 @@ void ASpaceRogueCharacter::LookUpAtRate(float Rate)
 
 void ASpaceRogueCharacter::FireWeapon()
 {
+	UE_LOG(LogTemp, Warning, TEXT("FIRE!!!!!!!"));
 	if (FireSound)
 	{
 		UGameplayStatics::PlaySound2D(this, FireSound);
@@ -215,6 +258,179 @@ void ASpaceRogueCharacter::FireWeapon()
 		}
 
 	}
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && HipFireMontage)
+	{
+		AnimInstance->Montage_Play(HipFireMontage);
+		AnimInstance->Montage_JumpToSection(FName("StartFire"));
+	}
+	StartCrosshairBulletFire();
+}
+
+void ASpaceRogueCharacter::AimingButtonPressed()
+{
+	bAiming = true;
+	
+	UE_LOG(LogTemp, Warning, TEXT("AIM!!!!!!!!!!!!"));
+}
+
+void ASpaceRogueCharacter::AimingButtonReleased()
+{
+	bAiming = false;
+
+}
+
+void ASpaceRogueCharacter::CameraInterpZoom(float DeltaTime)
+{
+	if (bAiming)
+	{
+		CameraCurrentFOV = FMath::FInterpTo(
+			CameraCurrentFOV,
+			CameraZoomedFOV,
+			DeltaTime,
+			ZoomInterpSpeed);
+	}
+	else
+	{
+		CameraCurrentFOV = FMath::FInterpTo(
+			CameraCurrentFOV,
+			CameraDefaultFOV,
+			DeltaTime,
+			ZoomInterpSpeed);
+	}
+	GetFollowCamera()->SetFieldOfView(CameraCurrentFOV);
+}
+
+void ASpaceRogueCharacter::SetLookRates()
+{
+	if (bAiming)
+	{
+		BaseTurnRate = AimingTurnRate;
+		BaseLookUpRate = AimingLookUpRate;
+	}
+	else
+	{
+		BaseTurnRate = HipTurnRate;
+		BaseLookUpRate = HipLookUpRate;
+	}
+}
+
+void ASpaceRogueCharacter::CalculateCrosshairSpread(float DeltaTime)
+{
+	FVector2D WalkSpeedRange{ 0.f,600.f };
+	FVector2D VelocityMultiplierRange{ 0.f,1.f };
+	FVector Velocity{ GetVelocity() };
+	Velocity.Z = 0.f;
+
+	CrosshairVelocityFactor = FMath::GetMappedRangeValueClamped(
+		WalkSpeedRange, 
+		VelocityMultiplierRange, 
+		Velocity.Size());
+
+	if (GetCharacterMovement()->IsFalling())
+	{
+		
+		//spread the crosshairs slowly while in air
+		CrosshairInAirFactor = FMath::FInterpTo(
+			CrosshairInAirFactor,
+			2.25f,
+			DeltaTime,
+			2.25f);
+	}
+	else
+	{
+		//shrink crosshairs quickly on ground
+		CrosshairInAirFactor = FMath::FInterpTo(
+			CrosshairInAirFactor,
+			0.f,
+			DeltaTime,
+			30.f);
+	}
+
+	if (bAiming)
+	{
+		
+		//shrink crosshairs a small amount very quickly
+		CrosshairAimFactor = FMath::FInterpTo(
+			CrosshairAimFactor,
+			0.6f,
+			DeltaTime,
+			30.f);
+	}
+	else
+	{
+		//spread crosshairs back to normal very quickly
+		CrosshairAimFactor = FMath::FInterpTo(
+			CrosshairAimFactor,
+			0.f,
+			DeltaTime,
+			30.f);
+	}
+	if (bFiringBullet)
+	{
+		CrosshairShootingFactor = FMath::FInterpTo(
+			CrosshairShootingFactor,
+			0.3f, 
+			DeltaTime, 
+			60.f);
+	}
+	else
+	{
+		CrosshairShootingFactor = FMath::FInterpTo(
+			CrosshairShootingFactor,
+			0.f,
+			DeltaTime,
+			60.f);
+	}
+	CrosshairSpreadMultiplier =
+		0.5f +
+		CrosshairVelocityFactor +
+		CrosshairInAirFactor-
+		CrosshairAimFactor+
+		CrosshairShootingFactor;
+}
+
+void ASpaceRogueCharacter::StartCrosshairBulletFire()
+{
+	bFiringBullet = true;
+	GetWorldTimerManager().SetTimer(
+		CrosshairShootTimer,
+		this,
+		&ASpaceRogueCharacter::FinishCrosshairBulletFire,
+		ShootTimeDuration);
+}
+
+void ASpaceRogueCharacter::FinishCrosshairBulletFire()
+{
+	bFiringBullet = false;
+}
+
+void ASpaceRogueCharacter::Turn(float Value)
+{
+	float TurnScaleFactor{};
+	if (bAiming)
+	{
+		TurnScaleFactor = MouseAimingTurnRate;
+	}
+	else
+	{
+		TurnScaleFactor = MouseHipTurnRate;
+	}
+	AddControllerYawInput(Value * TurnScaleFactor);
+}
+
+void ASpaceRogueCharacter::LookUp(float Value)
+{
+	float LookUpScaleFactor{};
+	if (bAiming)
+	{
+		LookUpScaleFactor = MouseAimingLookUpRate;
+	}
+	else
+	{
+		LookUpScaleFactor = MouseHipLookUpRate;
+	}
+	AddControllerPitchInput(Value * LookUpScaleFactor);
 }
 
 
