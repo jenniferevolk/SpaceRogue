@@ -35,6 +35,15 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float MaxHealth;
 
+	UPROPERTY(EditAnywhere,Category="Behavior Tree", meta = (AllowPrivateAccess = "true"))
+	class UBehaviorTree* BehaviorTree;
+
+	/** point for the enemy to move to */
+	UPROPERTY(EditAnywhere,Category="Behavior Tree", meta = (AllowPrivateAccess = "true",MakeEditWidget="true"))
+	FVector PatrolPoint;
+
+	class AEnemyController* EnemyController;
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -43,6 +52,8 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	virtual void BulletHit_Implementation(FHitResult HitResult) override;
+
+	FORCEINLINE UBehaviorTree* GetBehaviorTree() const { return BehaviorTree; }
 
 
 };
