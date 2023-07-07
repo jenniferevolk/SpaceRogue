@@ -40,6 +40,15 @@ protected:
 
 	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation,FHitResult& OutBeamLocation);
 
+
+	class AWeapon* SpawnDefaultWeapon();
+	void EquipWeapon(AWeapon* WeaponToEquip);
+
+	void DropWeapon();
+	void SelectButtonPressed();
+	void SelectButtonReleased();
+	void SwapWeapon(AWeapon* WeaponToSwap);
+	
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 		class USpringArmComponent* CameraBoom;
@@ -118,7 +127,15 @@ private:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
 	class AItem* TraceHitItemLastFrame;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	AWeapon* EquippedWeapon;
 
+	UPROPERTY(EditDefaultsOnly,BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	TSubclassOf<AWeapon> DefaultWeaponClass;
+
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	AItem* TraceHitItem;
+	
 public:	
 	ASpaceRogueCharacter();
 	virtual void Tick(float DeltaTime) override;

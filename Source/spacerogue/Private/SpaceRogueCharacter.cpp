@@ -13,7 +13,9 @@
 #include "BulletHitInterface.h"
 #include "Item.h"
 #include "Components/WidgetComponent.h"
-
+#include "Weapon.h"
+#include "Components/SphereComponent.h"
+#include "Components/BoxComponent.h"
 // Sets default values
 ASpaceRogueCharacter::ASpaceRogueCharacter():
 	BaseTurnRate(45.f),
@@ -81,6 +83,7 @@ void ASpaceRogueCharacter::BeginPlay()
 		CameraDefaultFOV = GetFollowCamera()->FieldOfView;
 		CameraCurrentFOV = CameraDefaultFOV;
 	}
+	EquipWeapon(SpawnDefaultWeapon());
 	
 }
 //--------------------------------------------------------------------------------
@@ -123,6 +126,68 @@ bool ASpaceRogueCharacter::GetBeamEndLocation(
 	
 }
 
+AWeapon* ASpaceRogueCharacter::SpawnDefaultWeapon()
+{
+	if (DefaultWeaponClass)
+	{
+		return GetWorld()->SpawnActor<AWeapon>(DefaultWeaponClass);
+		
+	}
+	return nullptr;
+}
+
+void ASpaceRogueCharacter::EquipWeapon(AWeapon* WeaponToEquip)
+{
+	if (WeaponToEquip)
+	{
+		
+		//get handsocket
+		const USkeletalMeshSocket* HandSocket = GetMesh()->GetSocketByName(FName("RightHandSocket"));
+		if (HandSocket)
+		{
+			//attach to hand socket
+			HandSocket->AttachActor(WeaponToEquip, GetMesh());
+		}
+		EquippedWeapon = WeaponToEquip;
+		EquippedWeapon->SetItemState(EItemState::EIS_Equipped);
+
+	}
+}
+
+void ASpaceRogueCharacter::DropWeapon()
+{
+	if (EquippedWeapon)
+	{
+		FDetachmentTransformRules DetachmentTransformRules(EDetachmentRule::KeepWorld, true);
+		EquippedWeapon->GetItemMesh()->DetachFromComponent(DetachmentTransformRules);
+
+		EquippedWeapon->SetItemState(EItemState::EIS_Falling);
+		EquippedWeapon->ThrowWeapon();
+	}
+}
+
+void ASpaceRogueCharacter::SelectButtonPressed()
+{
+	if (TraceHitItem)
+	{
+		auto TraceHitWeapon = Cast<AWeapon>(TraceHitItem);
+		SwapWeapon(TraceHitWeapon);
+	}
+	
+}
+
+void ASpaceRogueCharacter::SelectButtonReleased()
+{
+}
+
+void ASpaceRogueCharacter::SwapWeapon(AWeapon* WeaponToSwap)
+{
+	DropWeapon();
+	EquipWeapon(WeaponToSwap);
+	TraceHitItem = nullptr;
+	TraceHitItemLastFrame = nullptr;
+}
+
 // Called every frame
 void ASpaceRogueCharacter::Tick(float DeltaTime)
 {
@@ -158,6 +223,8 @@ void ASpaceRogueCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	PlayerInputComponent->BindAction("AimingButton", IE_Pressed, this, &ASpaceRogueCharacter::AimingButtonPressed);
 	PlayerInputComponent->BindAction("AimingButton", IE_Released, this, &ASpaceRogueCharacter::AimingButtonReleased);
 	
+	PlayerInputComponent->BindAction("Select", IE_Pressed, this, &ASpaceRogueCharacter::SelectButtonPressed);
+	PlayerInputComponent->BindAction("Select", IE_Released, this, &ASpaceRogueCharacter::SelectButtonReleased);
 }
 
 float ASpaceRogueCharacter::GetCrosshairSpreadMultiplier() const
@@ -220,6 +287,7 @@ void ASpaceRogueCharacter::FireWeapon()
 	const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName("BarrelSocket");
 	if (BarrelSocket)
 	{
+		UE_LOG(LogTemp, Warning, TEXT("wehavebarrle socket"));
 		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
 		if (MuzzleFlash)
 		{
@@ -285,19 +353,19 @@ void ASpaceRogueCharacter::TraceForItems()
 
 		if (ItemTraceResult.bBlockingHit)
 		{
-			AItem* HitItem = Cast<AItem>(ItemTraceResult.Actor);
-			if (HitItem && HitItem->GetPickupWidget())
+			TraceHitItem = Cast<AItem>(ItemTraceResult.Actor);
+			if (TraceHitItem && TraceHitItem->GetPickupWidget())
 			{
-				HitItem->GetPickupWidget()->SetVisibility(true);
+				TraceHitItem->GetPickupWidget()->SetVisibility(true);
 			}
 			if (TraceHitItemLastFrame)
 			{
-				if (HitItem != TraceHitItemLastFrame)
+				if (TraceHitItem != TraceHitItemLastFrame)
 				{
 					TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
 				}
 			}
-			TraceHitItemLastFrame = HitItem;
+			TraceHitItemLastFrame = TraceHitItem;
 		}
 	}
 	else if (TraceHitItemLastFrame)
