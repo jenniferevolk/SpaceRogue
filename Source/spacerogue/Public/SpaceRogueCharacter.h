@@ -22,12 +22,15 @@ protected:
 	void Turn(float Value);
 	void LookUp(float Value);
 	void FireWeapon();
-
+	void TraceForItems();
 	void AimingButtonPressed();
 	void AimingButtonReleased();
 	void CameraInterpZoom(float DeltaTime);
 	void SetLookRates();
 	void CalculateCrosshairSpread(float DeltaTime);
+
+	/** line trace for items under the crosshairs */
+	bool TraceUnderCrosshairs(FHitResult& OutHitResult, FVector& OutHitLocation);
 
 	UFUNCTION()
 	void StartCrosshairBulletFire();
@@ -35,7 +38,7 @@ protected:
 	UFUNCTION()
 	void FinishCrosshairBulletFire();
 
-	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation,FVector& OutBeamLocation);
+	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation,FHitResult& OutBeamLocation);
 
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
@@ -110,6 +113,11 @@ private:
 	FTimerHandle CrosshairShootTimer;
 
 
+	bool bShouldTraceForItems;
+	int8 OverlappedItemCount;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
+	class AItem* TraceHitItemLastFrame;
 
 public:	
 	ASpaceRogueCharacter();
@@ -121,4 +129,7 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	float GetCrosshairSpreadMultiplier() const;
+
+	FORCEINLINE int8 GetOverlappedItemCount() const { return OverlappedItemCount; }
+	void IncrementOverlappedItemCount(int8 Amount);
 };

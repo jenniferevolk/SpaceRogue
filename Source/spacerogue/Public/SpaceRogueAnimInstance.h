@@ -44,4 +44,6 @@ private:
 		bool bAiming;
 
 
+
+
 };
