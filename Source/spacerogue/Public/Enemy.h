@@ -20,6 +20,17 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	/** called when something overlaps with the agrosphere */
+
+	UFUNCTION()
+	void AgroSphereOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult);
+
 	/** particles to spawn when hit by bullets */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta=(AllowPrivateAccess = "true"))
 
@@ -28,6 +39,17 @@ protected:
 	/** sound to play when hit by bullets */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta=(AllowPrivateAccess = "true"))
 	class USoundCue* ImpactSound;
+
+	/** particles to spawn when dying */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+
+		class UParticleSystem* DeathParticles;
+
+	/** sound to play when dying */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+		class USoundCue* DeathSound;
+
+
 
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -42,7 +64,18 @@ protected:
 	UPROPERTY(EditAnywhere,Category="Behavior Tree", meta = (AllowPrivateAccess = "true",MakeEditWidget="true"))
 	FVector PatrolPoint;
 
+	/** point for the enemy to move to */
+	UPROPERTY(EditAnywhere, Category = "Behavior Tree", meta = (AllowPrivateAccess = "true", MakeEditWidget = "true"))
+		FVector PatrolPoint2;
+
 	class AEnemyController* EnemyController;
+
+	/** overlap sphere for when the enmy becomes hostile */
+	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category=Combat,meta=(AllowPrivateAccess))
+	class USphereComponent* AgroSphere;
+
+	int8 numberOfHits;
+
 
 public:	
 	// Called every frame
