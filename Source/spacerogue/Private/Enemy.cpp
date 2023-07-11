@@ -12,6 +12,8 @@
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Components/SphereComponent.h"
 #include "SpaceRogueCharacter.h"
+#include "Components/CapsuleComponent.h"
+
 // Sets default values
 AEnemy::AEnemy() :
 	Health(100.0f),
@@ -20,12 +22,21 @@ AEnemy::AEnemy() :
 	StunChance(0.5f),
 	bCanHitReact(true),
 	HitReactTimeMin(.5f),
-	HitReactTimeMax(.75f)
+	HitReactTimeMax(.75f),
+	AttackLFast(TEXT("AttackLFast")),
+	AttackRFast(TEXT("AttackRFast")),
+	AttackL(TEXT("AttackL")),
+	AttackR(TEXT("AttackR"))
+
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	AgroSphere = CreateDefaultSubobject<USphereComponent>(TEXT("AgroSphere"));
 	AgroSphere->SetupAttachment(GetRootComponent());
+
+	//create the combat range sphere
+	CombatRangeSphere = CreateDefaultSubobject<USphereComponent>(TEXT("CombatRange"));
+	CombatRangeSphere->SetupAttachment(GetRootComponent());
 }
 
 // Called when the game starts or when spawned
@@ -33,7 +44,20 @@ void AEnemy::BeginPlay()
 {
 	Super::BeginPlay();
 	AgroSphere->OnComponentBeginOverlap.AddDynamic(this, &AEnemy::AgroSphereOverlap);
+	CombatRangeSphere->OnComponentBeginOverlap.AddDynamic(
+		this,
+		&AEnemy::CombatRangeOverlap);
+	
+	CombatRangeSphere->OnComponentEndOverlap.AddDynamic(
+		this,
+		&AEnemy::CombatRangeEndOverlap);
+
+	
 	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECollisionResponse::ECR_Block);
+
+	//ignore the camera for mesh and capsule
+	GetMesh()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
+	GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_Camera, ECollisionResponse::ECR_Ignore);
 
 	//get the AI Controller
 	EnemyController = Cast<AEnemyController>(GetController());
@@ -72,6 +96,35 @@ void AEnemy::SetStunned(bool Stunned)
 
 }
 
+void AEnemy::CombatRangeOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (OtherActor == nullptr) return;
+	auto SpaceRogueCharacter = Cast<ASpaceRogueCharacter>(OtherActor);
+	if (SpaceRogueCharacter)
+	{
+		bInAttackRange = true;
+		if (EnemyController)
+		{
+			EnemyController->GetBlackboardComponent()->SetValueAsBool(TEXT("InAttackRange"), true);
+		}
+	}
+	
+}
+
+void AEnemy::CombatRangeEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+{
+	if (OtherActor == nullptr) return;
+	auto SpaceRogueCharacter = Cast<ASpaceRogueCharacter>(OtherActor);
+	if (SpaceRogueCharacter)
+	{
+		bInAttackRange = false;
+		if (EnemyController)
+		{
+			EnemyController->GetBlackboardComponent()->SetValueAsBool(TEXT("InAttackRange"), false);
+		}
+	}
+}
+
 void AEnemy::PlayHitMontage(FName Section, float PlayRate)
 {
 	if (bCanHitReact)
@@ -93,6 +146,40 @@ void AEnemy::ResetHitReactTimer()
 {
 	bCanHitReact = true;
 }
+
+void AEnemy::PlayAttackMontage(FName Section, float PlayRate)
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && AttackMontage)
+	{
+		AnimInstance->Montage_Play(AttackMontage, PlayRate);
+		AnimInstance->Montage_JumpToSection(Section, AttackMontage);
+	}
+}
+
+FName AEnemy::GetAttackSectionName()
+{
+	FName SectionName;
+	const int32 Section{ FMath::RandRange(1,4) };
+	switch (Section)
+	{
+	case 1:
+		SectionName = AttackLFast;
+		break;
+	case 2:
+		SectionName = AttackRFast;
+		break;
+	case 3:
+		SectionName = AttackL;
+		break;
+	case 4:
+		SectionName = AttackR;
+		break;
+	}
+	return SectionName;
+}
+
+
 
 // Called every frame
 void AEnemy::Tick(float DeltaTime)
