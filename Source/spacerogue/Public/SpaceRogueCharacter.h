@@ -135,6 +135,9 @@ private:
 
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	AItem* TraceHitItem;
+
+	
+
 	
 public:	
 	ASpaceRogueCharacter();

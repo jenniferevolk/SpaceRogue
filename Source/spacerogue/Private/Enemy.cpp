@@ -13,10 +13,14 @@
 #include "Components/SphereComponent.h"
 #include "SpaceRogueCharacter.h"
 // Sets default values
-AEnemy::AEnemy():
+AEnemy::AEnemy() :
 	Health(100.0f),
-	MaxHealth(100.0f)
-
+	MaxHealth(100.0f),
+	bStunned(false),
+	StunChance(0.5f),
+	bCanHitReact(true),
+	HitReactTimeMin(.5f),
+	HitReactTimeMax(.75f)
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -58,6 +62,38 @@ void AEnemy::AgroSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor*
 	}
 }
 
+void AEnemy::SetStunned(bool Stunned)
+{
+	bStunned = Stunned;
+	if (EnemyController)
+	{
+		EnemyController->GetBlackboardComponent()->SetValueAsBool(TEXT("Stunned"), Stunned);
+	}
+
+}
+
+void AEnemy::PlayHitMontage(FName Section, float PlayRate)
+{
+	if (bCanHitReact)
+	{
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance)
+		{
+			AnimInstance->Montage_Play(HitMontage, PlayRate);
+			AnimInstance->Montage_JumpToSection(Section, HitMontage);
+		}
+		bCanHitReact = false;
+		const float HitReactTime{ FMath::FRandRange(HitReactTimeMin,HitReactTimeMax) };
+		GetWorldTimerManager().SetTimer(HitReactTimer, this, &AEnemy::ResetHitReactTimer,HitReactTime);
+	}
+	
+}
+
+void AEnemy::ResetHitReactTimer()
+{
+	bCanHitReact = true;
+}
+
 // Called every frame
 void AEnemy::Tick(float DeltaTime)
 {
@@ -83,21 +119,28 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult)
 	{
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, HitResult.Location,FRotator(0.f),true);
 	}
+	
+	const float Stunned = FMath::FRandRange(0.f, 1.f);
+	if (Stunned <= StunChance)
+	{
+		PlayHitMontage(FName("HitReactFront"));
+		SetStunned(true);
+	}
 
 	// -----quick and dirty death routine (temporary) 
-	numberOfHits += 1;
-	if (numberOfHits > 3)
-	{
-		if (DeathSound)
-		{
-			UGameplayStatics::PlaySoundAtLocation(this, DeathSound, GetActorLocation());
-		}
-		if (DeathParticles)
-		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DeathParticles, HitResult.Location, FRotator(0.f), true);
-		}
-		Destroy();
-	}
+	//numberOfHits += 1;
+	//if (numberOfHits > 3)
+	//{
+	//	if (DeathSound)
+	//	{
+	//		UGameplayStatics::PlaySoundAtLocation(this, DeathSound, GetActorLocation());
+	//	}
+	//	if (DeathParticles)
+	//	{
+	//		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DeathParticles, HitResult.Location, FRotator(0.f), true);
+	//	}
+	//	Destroy();
+	//}
 
 }
 
