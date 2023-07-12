@@ -45,7 +45,11 @@ ASpaceRogueCharacter::ASpaceRogueCharacter():
 	//bullet fire timer variables
 	ShootTimeDuration(0.05f),
 	bFiringBullet(false),
-	bShouldTraceForItems(false)
+	bShouldTraceForItems(false),
+	//Automatic fire variables
+	AutomaticFireRate(0.1f),
+	bShouldFire(true),
+	bFireButtonPressed(false)
 {
 		// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -188,6 +192,36 @@ void ASpaceRogueCharacter::SwapWeapon(AWeapon* WeaponToSwap)
 	TraceHitItemLastFrame = nullptr;
 }
 
+void ASpaceRogueCharacter::FireButtonPressed()
+{
+	bFireButtonPressed = true;
+	StartFireTimer();
+}
+
+void ASpaceRogueCharacter::FireButtonReleased()
+{
+	bFireButtonPressed = false;
+}
+
+void ASpaceRogueCharacter::StartFireTimer()
+{
+	if (bShouldFire)
+	{
+		FireWeapon();
+		bShouldFire = false;
+		GetWorldTimerManager().SetTimer(AutoFireTimer,this,&ASpaceRogueCharacter::AutoFireReset,AutomaticFireRate);
+	}
+}
+
+void ASpaceRogueCharacter::AutoFireReset()
+{
+	bShouldFire = true;
+	if (bFireButtonPressed)
+	{
+		StartFireTimer();
+	}
+}
+
 // Called every frame
 void ASpaceRogueCharacter::Tick(float DeltaTime)
 {
@@ -218,7 +252,8 @@ void ASpaceRogueCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
-	PlayerInputComponent->BindAction("FireButton", IE_Pressed, this, &ASpaceRogueCharacter::FireWeapon);
+	PlayerInputComponent->BindAction("FireButton", IE_Pressed, this, &ASpaceRogueCharacter::FireButtonPressed);
+	PlayerInputComponent->BindAction("FireButton", IE_Released, this, &ASpaceRogueCharacter::FireButtonReleased);
 
 	PlayerInputComponent->BindAction("AimingButton", IE_Pressed, this, &ASpaceRogueCharacter::AimingButtonPressed);
 	PlayerInputComponent->BindAction("AimingButton", IE_Released, this, &ASpaceRogueCharacter::AimingButtonReleased);

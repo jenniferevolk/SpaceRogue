@@ -48,6 +48,13 @@ protected:
 	void SelectButtonPressed();
 	void SelectButtonReleased();
 	void SwapWeapon(AWeapon* WeaponToSwap);
+
+	void FireButtonPressed();
+	void FireButtonReleased();
+
+	void StartFireTimer();
+	UFUNCTION()
+		void AutoFireReset();
 	
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
@@ -136,8 +143,15 @@ private:
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	AItem* TraceHitItem;
 
-	
+	/** firebutton pressed */
+	bool bFireButtonPressed;
+	/** true when we can fire, false when waiting on timer */
+	bool bShouldFire;
+	/** seconds between bullets */
+	float AutomaticFireRate;
 
+	/** sets a timer between gunshots */
+	FTimerHandle AutoFireTimer;
 	
 public:	
 	ASpaceRogueCharacter();
