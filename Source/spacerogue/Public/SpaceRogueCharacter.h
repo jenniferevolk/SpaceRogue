@@ -14,7 +14,15 @@ enum class EAmmoType : uint8
 
 	EAT_MAX UMETA(DisplayName="DefaultMAX")
 };
+UENUM(BlueprintType)
+enum class ECombatState : uint8
+{
+	ECS_Unoccupied UMETA(DisplayName = "Unoccupied"),
+	ECS_FireTimerInProgress UMETA(DisplayName = "FireTimerInProgress"),
+	ECS_Reloading UMETA(DisplayName="Reloading"),
 
+	ECS_MAX UMETA(DisplayName = "DefaultMAX")
+};
 
 UCLASS()
 class SPACEROGUE_API ASpaceRogueCharacter : public ACharacter
@@ -67,7 +75,13 @@ protected:
 		void AutoFireReset();
 
 	void InitializeAmmoMap();
-	
+
+	bool WeaponHasAmmo();
+
+	void PlayFireSound();
+	void SendBullet();
+	void PlayGunfireMontage();
+
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 		class USpringArmComponent* CameraBoom;
@@ -185,7 +199,9 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
 	int32 StartingARAmmo;
 
-
+	/* combat state can only fire or reload if unoccupied*/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	ECombatState CombatState;
 
 public:	
 	ASpaceRogueCharacter();

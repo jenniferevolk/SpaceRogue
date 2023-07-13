@@ -24,7 +24,9 @@ protected:
 
 	void StopFalling();
 
-
+	/** ammo count */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Weapon Properties", meta = (AllowPrivateAccess = "true"))
+	int32 Ammo;
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category="Weapon Properties",meta=(AllowPrivateAccess="true"))
 	float Damage;
@@ -37,4 +39,6 @@ public:
 
 	FORCEINLINE float GetDamage() const { return Damage; }
 	FORCEINLINE float GetHeadShotDamage() const { return HeadShotDamage; }
+	FORCEINLINE int32 GetAmmo() const { return Ammo; }
+	void  DecrementAmmo();
 };

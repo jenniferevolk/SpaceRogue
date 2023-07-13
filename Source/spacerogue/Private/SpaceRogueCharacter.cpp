@@ -55,7 +55,9 @@ ASpaceRogueCharacter::ASpaceRogueCharacter():
 	CameraInterpElevation(65.f),
 	//starting ammo amounts
 	Starting9mmAmmo(85),
-	StartingARAmmo(120)
+	StartingARAmmo(120),
+	//combat variables
+	CombatState(ECombatState::ECS_Unoccupied)
 
 {
 		// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -65,7 +67,7 @@ ASpaceRogueCharacter::ASpaceRogueCharacter():
 	//create a camera boom(pulls in towards the character if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(GetRootComponent());
-	CameraBoom->TargetArmLength = 280.f;       //the camera follows at this distance behind the character
+	CameraBoom->TargetArmLength = 180.f;       //the camera follows at this distance behind the character
 	CameraBoom->bUsePawnControlRotation = true;  //rotate the arm based on the controller
 	CameraBoom->SocketOffset = FVector(0.f, 50.f, 70.f);
 
@@ -205,7 +207,7 @@ void ASpaceRogueCharacter::SwapWeapon(AWeapon* WeaponToSwap)
 void ASpaceRogueCharacter::FireButtonPressed()
 {
 	bFireButtonPressed = true;
-	StartFireTimer();
+	FireWeapon();
 }
 
 void ASpaceRogueCharacter::FireButtonReleased()
@@ -215,20 +217,28 @@ void ASpaceRogueCharacter::FireButtonReleased()
 
 void ASpaceRogueCharacter::StartFireTimer()
 {
-	if (bShouldFire)
-	{
-		FireWeapon();
-		bShouldFire = false;
-		GetWorldTimerManager().SetTimer(AutoFireTimer,this,&ASpaceRogueCharacter::AutoFireReset,AutomaticFireRate);
-	}
+	CombatState = ECombatState::ECS_FireTimerInProgress;
+	GetWorldTimerManager().SetTimer(
+		AutoFireTimer,
+		this,
+		&ASpaceRogueCharacter::AutoFireReset,
+		AutomaticFireRate);
+	
 }
 
 void ASpaceRogueCharacter::AutoFireReset()
 {
-	bShouldFire = true;
-	if (bFireButtonPressed)
+	CombatState = ECombatState::ECS_Unoccupied;
+	if (WeaponHasAmmo())
 	{
-		StartFireTimer();
+		if (bFireButtonPressed)
+		{
+			FireWeapon();
+		}
+	}
+	else
+	{
+		//reload weapon
 	}
 }
 
@@ -236,6 +246,85 @@ void ASpaceRogueCharacter::InitializeAmmoMap()
 {
 	AmmoMap.Add(EAmmoType::EAT_9mm, Starting9mmAmmo);
 	AmmoMap.Add(EAmmoType::EAT_AR, StartingARAmmo);
+}
+
+bool ASpaceRogueCharacter::WeaponHasAmmo()
+{
+	if (EquippedWeapon == nullptr) return false;
+	return EquippedWeapon->GetAmmo() > 0;
+}
+
+void ASpaceRogueCharacter::PlayFireSound()
+{
+	if (FireSound)
+	{
+		UGameplayStatics::PlaySound2D(this, FireSound);
+	}
+}
+
+void ASpaceRogueCharacter::SendBullet()
+{
+	const USkeletalMeshSocket* BarrelSocket = EquippedWeapon->GetItemMesh()->GetSocketByName("BarrelSocket");
+	if (BarrelSocket)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("wehavebarrle socket"));
+		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(EquippedWeapon->GetItemMesh());
+		if (MuzzleFlash)
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
+		}
+
+		FHitResult BeamHitResult;
+		bool bBeamEnd = GetBeamEndLocation(
+			SocketTransform.GetLocation(), BeamHitResult);
+		if (bBeamEnd)
+		{
+
+			if (BeamHitResult.Actor.IsValid())
+			{
+				IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(BeamHitResult.Actor.Get());
+				if (BulletHitInterface)
+				{
+					BulletHitInterface->BulletHit_Implementation(BeamHitResult);
+				}
+			}
+			else
+			{
+				//spawn default particles
+				if (ImpactParticles)
+				{
+					UGameplayStatics::SpawnEmitterAtLocation(
+						GetWorld(),
+						ImpactParticles,
+						BeamHitResult.Location);
+				}
+
+			}
+
+
+			UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
+				GetWorld(),
+				BeamParticles,
+				SocketTransform);
+			if (Beam)
+			{
+				Beam->SetVectorParameter(FName("Target"), BeamHitResult.Location);
+			}
+		}
+
+
+	}
+}
+
+void ASpaceRogueCharacter::PlayGunfireMontage()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && HipFireMontage)
+	{
+		AnimInstance->Montage_Play(HipFireMontage);
+		AnimInstance->Montage_JumpToSection(FName("StartFire"));
+	}
+	StartCrosshairBulletFire();
 }
 
 // Called every frame
@@ -347,68 +436,17 @@ void ASpaceRogueCharacter::LookUpAtRate(float Rate)
 
 void ASpaceRogueCharacter::FireWeapon()
 {
-	UE_LOG(LogTemp, Warning, TEXT("FIRE!!!!!!!"));
-	if (FireSound)
-	{
-		UGameplayStatics::PlaySound2D(this, FireSound);
-	}
-	const USkeletalMeshSocket* BarrelSocket = GetMesh()->GetSocketByName("BarrelSocket");
-	if (BarrelSocket)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("wehavebarrle socket"));
-		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(GetMesh());
-		if (MuzzleFlash)
-		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
-		}
-		
-		FHitResult BeamHitResult;
-		bool bBeamEnd = GetBeamEndLocation(
-			SocketTransform.GetLocation(),BeamHitResult);
-		if (bBeamEnd)
-		{
-			
-			if (BeamHitResult.Actor.IsValid())
-			{
-				IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(BeamHitResult.Actor.Get());
-				if (BulletHitInterface)
-				{
-					BulletHitInterface->BulletHit_Implementation(BeamHitResult);
-				}
-			}
-			else
-			{
-					//spawn default particles
-				if (ImpactParticles)
-				{
-					UGameplayStatics::SpawnEmitterAtLocation(
-						GetWorld(),
-						ImpactParticles,
-						BeamHitResult.Location);
-				}
-				
-			} 
-			
-			
+	if (EquippedWeapon == nullptr) return;
+	if (CombatState != ECombatState::ECS_Unoccupied) return;
 
-			UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(
-				GetWorld(),
-				BeamParticles,
-				SocketTransform);
-			if (Beam)
-			{
-				Beam->SetVectorParameter(FName("Target"), BeamHitResult.Location);
-			}
-		}
-
-	}
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && HipFireMontage)
+	if (WeaponHasAmmo())
 	{
-		AnimInstance->Montage_Play(HipFireMontage);
-		AnimInstance->Montage_JumpToSection(FName("StartFire"));
+		PlayFireSound();
+		SendBullet();
+		PlayGunfireMontage();
+		EquippedWeapon->DecrementAmmo();
+		StartFireTimer();
 	}
-	StartCrosshairBulletFire();
 }
 
 void ASpaceRogueCharacter::TraceForItems()
