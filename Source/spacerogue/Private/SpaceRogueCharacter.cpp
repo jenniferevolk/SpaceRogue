@@ -49,7 +49,10 @@ ASpaceRogueCharacter::ASpaceRogueCharacter():
 	//Automatic fire variables
 	AutomaticFireRate(0.1f),
 	bShouldFire(true),
-	bFireButtonPressed(false)
+	bFireButtonPressed(false),
+	// camera interp location variables
+	CameraInterpDistance(250.f),
+	CameraInterpElevation(65.f)
 {
 		// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -58,7 +61,7 @@ ASpaceRogueCharacter::ASpaceRogueCharacter():
 	//create a camera boom(pulls in towards the character if there is a collision)
 	CameraBoom = CreateDefaultSubobject<USpringArmComponent>(TEXT("CameraBoom"));
 	CameraBoom->SetupAttachment(GetRootComponent());
-	CameraBoom->TargetArmLength = 180.f;       //the camera follows at this distance behind the character
+	CameraBoom->TargetArmLength = 280.f;       //the camera follows at this distance behind the character
 	CameraBoom->bUsePawnControlRotation = true;  //rotate the arm based on the controller
 	CameraBoom->SocketOffset = FVector(0.f, 50.f, 70.f);
 
@@ -172,10 +175,13 @@ void ASpaceRogueCharacter::DropWeapon()
 
 void ASpaceRogueCharacter::SelectButtonPressed()
 {
+	
 	if (TraceHitItem)
 	{
-		auto TraceHitWeapon = Cast<AWeapon>(TraceHitItem);
-		SwapWeapon(TraceHitWeapon);
+		
+		TraceHitItem->StartItemCurve(this);
+
+		
 	}
 	
 }
@@ -278,6 +284,23 @@ void ASpaceRogueCharacter::IncrementOverlappedItemCount(int8 Amount)
 	{
 		OverlappedItemCount += Amount;
 		bShouldTraceForItems = true;
+	}
+}
+
+FVector ASpaceRogueCharacter::GetCameraInterpLocation()
+{
+	const FVector CameraWorldLocation{ FollowCamera->GetComponentLocation() };
+	const FVector CameraForward{FollowCamera->GetForwardVector()};
+	//desired = cameraWorldLocation + forward * A + Up * b
+	return CameraWorldLocation + CameraForward * CameraInterpDistance+FVector(0.f,0.f,CameraInterpElevation);
+}
+
+void ASpaceRogueCharacter::GetPickupItem(AItem* Item)
+{
+	auto Weapon = Cast<AWeapon>(Item);
+	if (Weapon)
+	{
+		SwapWeapon(Weapon);
 	}
 }
 

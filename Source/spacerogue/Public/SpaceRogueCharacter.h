@@ -153,6 +153,15 @@ private:
 	/** sets a timer between gunshots */
 	FTimerHandle AutoFireTimer;
 	
+	/** distance outward from the camera for the interp destination */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
+	float CameraInterpDistance;
+
+	/** distance  upward from the camera for the interp destination */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
+	float CameraInterpElevation;
+
+	
 public:	
 	ASpaceRogueCharacter();
 	virtual void Tick(float DeltaTime) override;
@@ -166,4 +175,13 @@ public:
 
 	FORCEINLINE int8 GetOverlappedItemCount() const { return OverlappedItemCount; }
 	void IncrementOverlappedItemCount(int8 Amount);
+
+	FVector GetCameraInterpLocation();
+	void GetPickupItem(AItem* Item);
+
+
+	
+
+
+
 };
