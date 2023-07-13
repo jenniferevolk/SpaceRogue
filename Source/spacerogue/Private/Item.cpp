@@ -7,6 +7,7 @@
 #include "Components/SphereComponent.h"
 #include "SpaceRogueCharacter.h"
 #include "Camera/CameraComponent.h"
+
 // Sets default values
 AItem::AItem():
 	ItemName(FString("Default")),

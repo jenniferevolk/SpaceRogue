@@ -52,7 +52,11 @@ ASpaceRogueCharacter::ASpaceRogueCharacter():
 	bFireButtonPressed(false),
 	// camera interp location variables
 	CameraInterpDistance(250.f),
-	CameraInterpElevation(65.f)
+	CameraInterpElevation(65.f),
+	//starting ammo amounts
+	Starting9mmAmmo(85),
+	StartingARAmmo(120)
+
 {
 		// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -91,7 +95,7 @@ void ASpaceRogueCharacter::BeginPlay()
 		CameraCurrentFOV = CameraDefaultFOV;
 	}
 	EquipWeapon(SpawnDefaultWeapon());
-	
+	InitializeAmmoMap();
 }
 //--------------------------------------------------------------------------------
 
@@ -226,6 +230,12 @@ void ASpaceRogueCharacter::AutoFireReset()
 	{
 		StartFireTimer();
 	}
+}
+
+void ASpaceRogueCharacter::InitializeAmmoMap()
+{
+	AmmoMap.Add(EAmmoType::EAT_9mm, Starting9mmAmmo);
+	AmmoMap.Add(EAmmoType::EAT_AR, StartingARAmmo);
 }
 
 // Called every frame
