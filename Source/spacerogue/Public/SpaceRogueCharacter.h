@@ -4,16 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "AmmoType.h"
 #include "SpaceRogueCharacter.generated.h"
 
-UENUM(BlueprintType)
-enum class EAmmoType : uint8
-{
-	EAT_9mm UMETA(DisplayName="9mm"),
-	EAT_AR UMETA(DisplayName="AssaultRifle"),
-
-	EAT_MAX UMETA(DisplayName="DefaultMAX")
-};
 UENUM(BlueprintType)
 enum class ECombatState : uint8
 {
@@ -78,9 +71,17 @@ protected:
 
 	bool WeaponHasAmmo();
 
+	/** fireweapon functions */
 	void PlayFireSound();
 	void SendBullet();
 	void PlayGunfireMontage();
+
+
+	void ReloadButtonPressed();
+
+	void ReloadWeapon();
+
+	bool CarryingAmmo();
 
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
@@ -202,6 +203,12 @@ private:
 	/* combat state can only fire or reload if unoccupied*/
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	ECombatState CombatState;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	UAnimMontage* ReloadMontage;
+
+	UFUNCTION(BlueprintCallable)
+	void FinishReloading();
 
 public:	
 	ASpaceRogueCharacter();

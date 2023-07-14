@@ -16,6 +16,40 @@
 #include "Weapon.h"
 #include "Components/SphereComponent.h"
 #include "Components/BoxComponent.h"
+void ASpaceRogueCharacter::FinishReloading()
+{
+	
+	CombatState = ECombatState::ECS_Unoccupied;
+	if (EquippedWeapon == nullptr) return;
+	const auto AmmoType{ EquippedWeapon->GetAmmoType() };
+	if (AmmoMap.Contains(AmmoType))
+	{
+		//amount of ammo the character is carrying of the equipped weapon type
+		int32 CarriedAmmo = AmmoMap[AmmoType];
+
+		//space left in the magazine of equipped weapon
+		const int32 MagEmptySpace = EquippedWeapon->GetMagazineCapacity() -
+									EquippedWeapon->GetAmmo();
+
+		if (MagEmptySpace > CarriedAmmo)
+		{
+			//reload the magazine with all the amo we are carrying
+			EquippedWeapon->ReloadAmmo(CarriedAmmo);
+			CarriedAmmo = 0;
+			AmmoMap.Add(AmmoType, CarriedAmmo);
+
+
+		}
+		else
+		{
+			//fill the magazine
+			EquippedWeapon->ReloadAmmo(MagEmptySpace);
+			CarriedAmmo -= MagEmptySpace;
+			AmmoMap.Add(AmmoType, CarriedAmmo);
+
+		}
+	}
+}
 // Sets default values
 ASpaceRogueCharacter::ASpaceRogueCharacter():
 	BaseTurnRate(45.f),
@@ -99,7 +133,7 @@ void ASpaceRogueCharacter::BeginPlay()
 	EquipWeapon(SpawnDefaultWeapon());
 	InitializeAmmoMap();
 }
-//--------------------------------------------------------------------------------
+
 
 bool ASpaceRogueCharacter::GetBeamEndLocation(
 	const FVector& MuzzleSocketLocation, 
@@ -238,7 +272,7 @@ void ASpaceRogueCharacter::AutoFireReset()
 	}
 	else
 	{
-		//reload weapon
+		ReloadWeapon();
 	}
 }
 
@@ -327,6 +361,41 @@ void ASpaceRogueCharacter::PlayGunfireMontage()
 	StartCrosshairBulletFire();
 }
 
+void ASpaceRogueCharacter::ReloadButtonPressed()
+{
+	ReloadWeapon();
+}
+
+void ASpaceRogueCharacter::ReloadWeapon()
+{
+	if (CombatState != ECombatState::ECS_Unoccupied) return;
+	if (EquippedWeapon == nullptr) return;
+	
+	
+	if (CarryingAmmo()) 
+	{
+		
+		CombatState = ECombatState::ECS_Reloading;
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance && ReloadMontage)
+		{
+			AnimInstance->Montage_Play(ReloadMontage);
+			AnimInstance->Montage_JumpToSection(EquippedWeapon->GetReloadMontageSection());
+		}
+	}
+}
+
+bool ASpaceRogueCharacter::CarryingAmmo()
+{
+	if (EquippedWeapon == nullptr) return false;
+	auto AmmoType = EquippedWeapon->GetAmmoType();
+	if (AmmoMap.Contains(AmmoType))
+	{
+		return AmmoMap[AmmoType] > 0;
+	}
+	return false;
+}
+
 // Called every frame
 void ASpaceRogueCharacter::Tick(float DeltaTime)
 {
@@ -365,6 +434,8 @@ void ASpaceRogueCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	
 	PlayerInputComponent->BindAction("Select", IE_Pressed, this, &ASpaceRogueCharacter::SelectButtonPressed);
 	PlayerInputComponent->BindAction("Select", IE_Released, this, &ASpaceRogueCharacter::SelectButtonReleased);
+
+	PlayerInputComponent->BindAction("ReloadButton", IE_Pressed, this, &ASpaceRogueCharacter::ReloadButtonPressed);
 }
 
 float ASpaceRogueCharacter::GetCrosshairSpreadMultiplier() const
