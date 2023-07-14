@@ -59,6 +59,7 @@ protected:
 	void SelectButtonPressed();
 	void SelectButtonReleased();
 	void SwapWeapon(AWeapon* WeaponToSwap);
+	void PickUpAmmo(class AAmmo* Ammo);
 
 	void FireButtonPressed();
 	void FireButtonReleased();

@@ -66,7 +66,7 @@ protected:
 	void SetActiveStars();
 
 	/**sets properties of the items components based on state */
-	void SetItemProperties(EItemState State);
+	virtual void SetItemProperties(EItemState State);
 
 	/** called when the interpTimer is finished */
 	void FinishInterping();
@@ -172,4 +172,5 @@ public:
 
 	FORCEINLINE USoundCue* GetPickupSound() const { return PickupSound; }
 	FORCEINLINE USoundCue* GetEquipSound() const { return EquipSound; }
+	FORCEINLINE int32 GetItemCount() const { return ItemCount; }
 };

@@ -16,6 +16,7 @@
 #include "Weapon.h"
 #include "Components/SphereComponent.h"
 #include "Components/BoxComponent.h"
+#include "Ammo.h"
 void ASpaceRogueCharacter::FinishReloading()
 {
 	
@@ -242,6 +243,27 @@ void ASpaceRogueCharacter::SwapWeapon(AWeapon* WeaponToSwap)
 	EquipWeapon(WeaponToSwap);
 	TraceHitItem = nullptr;
 	TraceHitItemLastFrame = nullptr;
+}
+
+void ASpaceRogueCharacter::PickUpAmmo(AAmmo* Ammo)
+{
+	if (AmmoMap.Find(Ammo->GetAmmoType()))
+	{
+		//get amount of ammo in our ammomap for ammos type
+		int32 AmmoCount{ AmmoMap[Ammo->GetAmmoType()] };
+		AmmoCount += Ammo->GetItemCount();
+		//set amount of ammo in ammomap for this type
+		AmmoMap[Ammo->GetAmmoType()] = AmmoCount;
+	}
+	if (EquippedWeapon->GetAmmoType() == Ammo->GetAmmoType())
+	{
+		//check if gun is empty
+		if (EquippedWeapon->GetAmmo() == 0)
+		{
+			ReloadWeapon();
+		}
+	}
+	Ammo->Destroy();
 }
 
 void ASpaceRogueCharacter::FireButtonPressed()
@@ -507,6 +529,11 @@ void ASpaceRogueCharacter::GetPickupItem(AItem* Item)
 	if (Weapon)
 	{
 		SwapWeapon(Weapon);
+	}
+	auto Ammo = Cast<AAmmo>(Item);
+	if (Ammo)
+	{
+		PickUpAmmo(Ammo);
 	}
 }
 
