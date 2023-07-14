@@ -83,6 +83,19 @@ protected:
 
 	bool CarryingAmmo();
 
+
+
+	/** called from animation blueprint with GrabClip notify */
+	UFUNCTION(BlueprintCallable)
+	void GrabClip();
+
+	UFUNCTION(BlueprintCallable)
+	/** called from animation blueprint with ReleaseClip Notify */
+	void ReleaseClip();
+
+
+
+
 private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
 		class USpringArmComponent* CameraBoom;
@@ -209,6 +222,15 @@ private:
 
 	UFUNCTION(BlueprintCallable)
 	void FinishReloading();
+
+	/** transform of the clip when we first grab the clip during reloading */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FTransform ClipTransform;
+
+	/** scene component to attach to the characters hand during reloading */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	USceneComponent* HandSceneComponent;
+
 
 public:	
 	ASpaceRogueCharacter();

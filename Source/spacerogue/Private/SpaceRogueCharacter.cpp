@@ -92,7 +92,7 @@ ASpaceRogueCharacter::ASpaceRogueCharacter():
 	StartingARAmmo(120),
 	//combat variables
 	CombatState(ECombatState::ECS_Unoccupied)
-
+	
 {
 		// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -119,6 +119,8 @@ ASpaceRogueCharacter::ASpaceRogueCharacter():
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 540.f, 0.f); //..at this rotation rate
 	GetCharacterMovement()->JumpZVelocity = 600.f;
 	GetCharacterMovement()->AirControl = 0.2f;
+
+	HandSceneComponent = CreateDefaultSubobject<USceneComponent>(TEXT("HandSceneComp"));
 }
 
 // Called when the game starts or when spawned
@@ -220,6 +222,10 @@ void ASpaceRogueCharacter::SelectButtonPressed()
 	{
 		
 		TraceHitItem->StartItemCurve(this);
+		if (TraceHitItem->GetPickupSound())
+		{
+			UGameplayStatics::PlaySound2D(this, (TraceHitItem->GetPickupSound()));
+		}
 
 		
 	}
@@ -396,6 +402,31 @@ bool ASpaceRogueCharacter::CarryingAmmo()
 	return false;
 }
 
+void ASpaceRogueCharacter::GrabClip()
+{
+	if (EquippedWeapon == nullptr) return;
+	if (HandSceneComponent == nullptr) return;
+
+	UE_LOG(LogTemp, Warning, TEXT("did we make it?"));
+	// index for the clip bone on the equipped weapon
+	int32 ClipBoneIndex{ EquippedWeapon->GetItemMesh()->GetBoneIndex(EquippedWeapon->GetClipBoneName()) };
+	//store the transform of the clip
+	ClipTransform=EquippedWeapon->GetItemMesh()->GetBoneTransform(ClipBoneIndex);
+
+	FAttachmentTransformRules AttachmentRules(EAttachmentRule::KeepRelative, true);
+
+	HandSceneComponent->AttachToComponent(GetMesh(), AttachmentRules, FName(TEXT("hand_l")));
+	HandSceneComponent->SetWorldTransform(ClipTransform);
+
+	EquippedWeapon->SetMovingClip(true);
+
+}
+
+void ASpaceRogueCharacter::ReleaseClip()
+{
+	EquippedWeapon->SetMovingClip(false);
+}
+
 // Called every frame
 void ASpaceRogueCharacter::Tick(float DeltaTime)
 {
@@ -467,6 +498,11 @@ FVector ASpaceRogueCharacter::GetCameraInterpLocation()
 
 void ASpaceRogueCharacter::GetPickupItem(AItem* Item)
 {
+	if (Item->GetEquipSound())
+	{
+		UGameplayStatics::PlaySound2D(this, Item->GetEquipSound());
+	}
+
 	auto Weapon = Cast<AWeapon>(Item);
 	if (Weapon)
 	{
