@@ -23,6 +23,15 @@ protected:
 
 	/**override item properties to set ammo mesh instead of itemmesh */
 	virtual void SetItemProperties(EItemState State) override;
+
+	UFUNCTION()
+	void AmmoSphereOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult);
 private:
 	/** mesh for the ammo pickup */
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly,Category=Ammo,meta=(AllowPrivateAccess="true"))
@@ -30,6 +39,13 @@ private:
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = Ammo, meta = (AllowPrivateAccess = "true"))
 	EAmmoType AmmoType;
+
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Ammo, meta = (AllowPrivateAccess = "true"))
+	UTexture2D* AmmoIconTexture;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Ammo, meta = (AllowPrivateAccess = "true"))
+	class USphereComponent* AmmoCollisionSphere;
 	
 public:
 	FORCEINLINE UStaticMeshComponent* GetAmmoMesh() const { return AmmoMesh; }

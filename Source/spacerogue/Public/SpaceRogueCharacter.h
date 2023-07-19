@@ -17,6 +17,19 @@ enum class ECombatState : uint8
 	ECS_MAX UMETA(DisplayName = "DefaultMAX")
 };
 
+USTRUCT(BlueprintType)
+struct FInterpLocation
+{
+	GENERATED_BODY()
+
+		//location to interp to
+		UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		USceneComponent* SceneComponent;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		int32 ItemCount;
+};
+
 UCLASS()
 class SPACEROGUE_API ASpaceRogueCharacter : public ACharacter
 {
@@ -95,6 +108,7 @@ protected:
 	void ReleaseClip();
 
 
+	void InitializeInterpLocations();
 
 
 private:
@@ -232,6 +246,45 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	USceneComponent* HandSceneComponent;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+		USceneComponent* WeaponInterpComp;
+
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	USceneComponent* InterpComp1;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+		USceneComponent* InterpComp2;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+		USceneComponent* InterpComp3;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+		USceneComponent* InterpComp4;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+		USceneComponent* InterpComp5;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+		USceneComponent* InterpComp6;
+
+	//array of interp location structs
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	TArray<FInterpLocation> InterpLocations;
+
+	FTimerHandle PickupSoundTimer;
+	FTimerHandle EquipSoundTimer;
+
+	bool bShouldPlayPickupSound;
+	bool bShouldPlayEquipSound;
+
+	void ResetPickupSoundTimer();
+	void ResetEquipSoundTimer();
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
+		float PickupSoundResetTime;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
+		float EquipSoundResetTime;
 
 public:	
 	ASpaceRogueCharacter();
@@ -247,12 +300,21 @@ public:
 	FORCEINLINE int8 GetOverlappedItemCount() const { return OverlappedItemCount; }
 	void IncrementOverlappedItemCount(int8 Amount);
 
-	FVector GetCameraInterpLocation();
+	//no longer needed aitem has getinterplocation
+	//FVector GetCameraInterpLocation();
 	void GetPickupItem(AItem* Item);
+	FInterpLocation GetInterpLocation(int32 Index);
 
+	//returns index with lowest item count
+	int32 GetInterpLocationIndex();
 
+	void IncrementInterpLocItemCount(int32 Index, int32 Amount);
 	
+	FORCEINLINE bool ShouldPlayPickupSound() const { return bShouldPlayPickupSound; }
+	FORCEINLINE bool ShouldPlayEquipSound() const { return bShouldPlayEquipSound; }
 
+	void StartPickupSoundTimer();
+	void StartEquipSoundTimer();
 
 
 };

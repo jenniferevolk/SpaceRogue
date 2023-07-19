@@ -215,19 +215,19 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult)
 	}
 
 	// -----quick and dirty death routine (temporary) 
-	//numberOfHits += 1;
-	//if (numberOfHits > 3)
-	//{
-	//	if (DeathSound)
-	//	{
-	//		UGameplayStatics::PlaySoundAtLocation(this, DeathSound, GetActorLocation());
-	//	}
-	//	if (DeathParticles)
-	//	{
-	//		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DeathParticles, HitResult.Location, FRotator(0.f), true);
-	//	}
-	//	Destroy();
-	//}
+	numberOfHits += 1;
+	if (numberOfHits > 3)
+	{
+		if (DeathSound)
+		{
+			UGameplayStatics::PlaySoundAtLocation(this, DeathSound, GetActorLocation());
+		}
+		if (DeathParticles)
+		{
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DeathParticles, HitResult.Location, FRotator(0.f), true);
+		}
+		Destroy();
+	}
 
 }
 
