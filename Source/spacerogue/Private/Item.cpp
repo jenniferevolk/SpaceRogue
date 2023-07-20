@@ -233,7 +233,6 @@ void AItem::ItemInterp(float DeltaTime)
 		const float ElapsedTime = GetWorldTimerManager().GetTimerElapsed(ItemInterpTimer);
 		//get curve value corresponding to elapsed time
 		const float CurveValue = ItemZCurve->GetFloatValue(ElapsedTime);
-		UE_LOG(LogTemp, Warning, TEXT("Curve value: %f"),CurveValue);
 		// get the item's initial location when curve starts
 		FVector ItemLocation = ItemInterpStartLocation;
 		//get location in front of the camera
