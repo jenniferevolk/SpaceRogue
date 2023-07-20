@@ -170,6 +170,8 @@ void ASpaceRogueCharacter::BeginPlay()
 		CameraCurrentFOV = CameraDefaultFOV;
 	}
 	EquipWeapon(SpawnDefaultWeapon());
+	EquippedWeapon->DisableCustomDepth();
+	EquippedWeapon->DisableGlowMaterial();
 	InitializeAmmoMap();
 	InitializeInterpLocations();
 }
@@ -694,12 +696,14 @@ void ASpaceRogueCharacter::TraceForItems()
 			if (TraceHitItem && TraceHitItem->GetPickupWidget())
 			{
 				TraceHitItem->GetPickupWidget()->SetVisibility(true);
+				TraceHitItem->EnableCustomDepth();
 			}
 			if (TraceHitItemLastFrame)
 			{
 				if (TraceHitItem != TraceHitItemLastFrame)
 				{
 					TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
+					TraceHitItemLastFrame->DisableCustomDepth();
 				}
 			}
 			TraceHitItemLastFrame = TraceHitItem;
@@ -708,6 +712,7 @@ void ASpaceRogueCharacter::TraceForItems()
 	else if (TraceHitItemLastFrame)
 	{
 		TraceHitItemLastFrame->GetPickupWidget()->SetVisibility(false);
+		TraceHitItemLastFrame->DisableCustomDepth();
 	}
 }
 
