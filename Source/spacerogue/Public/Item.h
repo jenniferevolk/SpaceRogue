@@ -84,7 +84,7 @@ protected:
 
 	FVector GetInterpLocation();
 
-	void PlayPickupSound();
+	void PlayPickupSound(bool bForcePlaySound = false);
 	
 	
 	virtual void InitializeCustomDepth();
@@ -101,7 +101,7 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 	//called from spaceroguecharacter
-	void PlayEquipSound();
+	void PlayEquipSound(bool bForcePlaySound=false);
 private:
 
 	/*skeletal mesh for the item */
@@ -219,7 +219,20 @@ private:
 	UPROPERTY(VisibleAnywhere, Category = "Item Properties", meta = (AllowPrivateAccess = "true"))
 		float FresnelReflectFraction;
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly,Category = Inventory, meta = (AllowPrivateAccess = "true"))
+	UTexture2D* IconBackground;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
+	UTexture2D* IconItem;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
+	UTexture2D* AmmoItem;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
+	int32 SlotIndex;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
+	bool bCharacterInventoryFull;
 
 public:
 	FORCEINLINE UWidgetComponent* GetPickupWidget() const { return PickupWidget; }
@@ -229,14 +242,21 @@ public:
 	void SetItemState(EItemState State);
 	FORCEINLINE USkeletalMeshComponent* GetItemMesh() const { return ItemMesh; }
 
-	void StartItemCurve(ASpaceRogueCharacter* Char);
+
 
 	FORCEINLINE USoundCue* GetPickupSound() const { return PickupSound; }
 	FORCEINLINE USoundCue* GetEquipSound() const { return EquipSound; }
 	FORCEINLINE int32 GetItemCount() const { return ItemCount; }
+	FORCEINLINE int32 GetSlotIndex() const { return SlotIndex; }
+	FORCEINLINE void SetSlotIndex(int32 Index) { SlotIndex=Index; }
+	FORCEINLINE void SetCharacter(ASpaceRogueCharacter* Char) { Character = Char; }
+	FORCEINLINE void SetCharacterInventoryFull(bool bFull) { bCharacterInventoryFull = bFull; }
 
 
+	void StartItemCurve(ASpaceRogueCharacter* Char, bool bForcePlaySound = false);
 	virtual void EnableCustomDepth();
 	virtual void DisableCustomDepth();
 	void DisableGlowMaterial();
+
+
 };

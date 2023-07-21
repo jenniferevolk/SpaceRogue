@@ -51,6 +51,10 @@ void ASpaceRogueCharacter::FinishReloading()
 		}
 	}
 }
+void ASpaceRogueCharacter::FinishEquipping()
+{
+	CombatState = ECombatState::ECS_Unoccupied;
+}
 void ASpaceRogueCharacter::ResetPickupSoundTimer()
 {
 	bShouldPlayPickupSound = true;
@@ -104,7 +108,10 @@ ASpaceRogueCharacter::ASpaceRogueCharacter():
 	bShouldPlayPickupSound(true),
 	bShouldPlayEquipSound(true),
 	PickupSoundResetTime(0.2f),
-	EquipSoundResetTime(0.2f)
+	EquipSoundResetTime(0.2f),
+	HighlightedSlot(-1)
+
+	
 	
 {
 		// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -170,8 +177,11 @@ void ASpaceRogueCharacter::BeginPlay()
 		CameraCurrentFOV = CameraDefaultFOV;
 	}
 	EquipWeapon(SpawnDefaultWeapon());
+	Inventory.Add(EquippedWeapon);
+	EquippedWeapon->SetSlotIndex(0);
 	EquippedWeapon->DisableCustomDepth();
 	EquippedWeapon->DisableGlowMaterial();
+	EquippedWeapon->SetCharacter(this);
 	InitializeAmmoMap();
 	InitializeInterpLocations();
 }
@@ -225,7 +235,7 @@ AWeapon* ASpaceRogueCharacter::SpawnDefaultWeapon()
 	return nullptr;
 }
 
-void ASpaceRogueCharacter::EquipWeapon(AWeapon* WeaponToEquip)
+void ASpaceRogueCharacter::EquipWeapon(AWeapon* WeaponToEquip,bool bSwapping)
 {
 	if (WeaponToEquip)
 	{
@@ -237,16 +247,29 @@ void ASpaceRogueCharacter::EquipWeapon(AWeapon* WeaponToEquip)
 			//attach to hand socket
 			HandSocket->AttachActor(WeaponToEquip, GetMesh());
 		}
+		if (EquippedWeapon == nullptr)
+		{
+			//-1 == no equipped weapon yet. no need to reverse the icon animation
+			EquipItemDelegate.Broadcast(-1, WeaponToEquip->GetSlotIndex());
+		}
+		else if(!bSwapping)
+		{
+			EquipItemDelegate.Broadcast(EquippedWeapon->GetSlotIndex(), WeaponToEquip->GetSlotIndex());
+
+		}
+
 		EquippedWeapon = WeaponToEquip;
 		EquippedWeapon->SetItemState(EItemState::EIS_Equipped);
 
 	}
+	FinishEquipping();
 }
 
 void ASpaceRogueCharacter::DropWeapon()
 {
 	if (EquippedWeapon)
 	{
+		
 		FDetachmentTransformRules DetachmentTransformRules(EDetachmentRule::KeepWorld, true);
 		EquippedWeapon->GetItemMesh()->DetachFromComponent(DetachmentTransformRules);
 
@@ -257,10 +280,14 @@ void ASpaceRogueCharacter::DropWeapon()
 
 void ASpaceRogueCharacter::SelectButtonPressed()
 {
+
+	if (CombatState != ECombatState::ECS_Unoccupied) return;
 	
 	if (TraceHitItem)
 	{
-		TraceHitItem->StartItemCurve(this);
+		
+		TraceHitItem->StartItemCurve(this, true);
+		TraceHitItem = nullptr;
 	}
 	
 }
@@ -271,8 +298,13 @@ void ASpaceRogueCharacter::SelectButtonReleased()
 
 void ASpaceRogueCharacter::SwapWeapon(AWeapon* WeaponToSwap)
 {
+	if (Inventory.Num() - 1 >= EquippedWeapon->GetSlotIndex())
+	{
+		Inventory[EquippedWeapon->GetSlotIndex()] = WeaponToSwap;
+		WeaponToSwap->SetSlotIndex(EquippedWeapon->GetSlotIndex());
+	}
 	DropWeapon();
-	EquipWeapon(WeaponToSwap);
+	EquipWeapon(WeaponToSwap,true);
 	TraceHitItem = nullptr;
 	TraceHitItemLastFrame = nullptr;
 }
@@ -361,7 +393,7 @@ void ASpaceRogueCharacter::SendBullet()
 	const USkeletalMeshSocket* BarrelSocket = EquippedWeapon->GetItemMesh()->GetSocketByName("BarrelSocket");
 	if (BarrelSocket)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("wehavebarrle socket"));
+		
 		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(EquippedWeapon->GetItemMesh());
 		if (MuzzleFlash)
 		{
@@ -461,7 +493,6 @@ void ASpaceRogueCharacter::GrabClip()
 	if (EquippedWeapon == nullptr) return;
 	if (HandSceneComponent == nullptr) return;
 
-	UE_LOG(LogTemp, Warning, TEXT("did we make it?"));
 	// index for the clip bone on the equipped weapon
 	int32 ClipBoneIndex{ EquippedWeapon->GetItemMesh()->GetBoneIndex(EquippedWeapon->GetClipBoneName()) };
 	//store the transform of the clip
@@ -504,6 +535,100 @@ void ASpaceRogueCharacter::InitializeInterpLocations()
 	FInterpLocation InterpLoc6{ InterpComp6,0 };
 	InterpLocations.Add(InterpLoc6);
 
+}
+
+void ASpaceRogueCharacter::FKeyPressed()
+{
+	if (EquippedWeapon->GetSlotIndex() == 0) return;
+	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 0);
+}
+
+void ASpaceRogueCharacter::OneKeyPressed()
+{
+	if (EquippedWeapon->GetSlotIndex() == 1) return;
+	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 1);
+}
+
+void ASpaceRogueCharacter::TwoKeyPressed()
+{
+	if (EquippedWeapon->GetSlotIndex() == 2) return;
+	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 2);
+}
+
+void ASpaceRogueCharacter::ThreeKeyPressed()
+{
+	if (EquippedWeapon->GetSlotIndex() == 3) return;
+	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 3);
+}
+
+void ASpaceRogueCharacter::FourKeyPressed()
+{
+	if (EquippedWeapon->GetSlotIndex() == 4) return;
+	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 4);
+}
+
+void ASpaceRogueCharacter::FiveKeyPressed()
+{
+	if (EquippedWeapon->GetSlotIndex() == 5) return;
+	ExchangeInventoryItems(EquippedWeapon->GetSlotIndex(), 5);
+}
+
+void ASpaceRogueCharacter::ExchangeInventoryItems(int32 CurrentItemIndex, int32 NewItemIndex)
+{
+	
+	const bool bCanExchangeItems =
+		(CurrentItemIndex != NewItemIndex) &&
+		(NewItemIndex < Inventory.Num()) &&
+		(CombatState == ECombatState::ECS_Unoccupied || CombatState == ECombatState::ECS_Equipping);
+	if (bCanExchangeItems)
+	{
+		
+		auto OldEquippedWeapon = EquippedWeapon;
+		auto NewWeapon = Cast<AWeapon>(Inventory[NewItemIndex]);
+		EquipWeapon(NewWeapon);
+		OldEquippedWeapon->SetItemState(EItemState::EIS_PickedUp);
+		NewWeapon->SetItemState(EItemState::EIS_Equipped);
+
+		CombatState = ECombatState::ECS_Equipping;
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance && EquipMontage)
+		{
+			AnimInstance->Montage_Play(EquipMontage, 1.0f);
+			AnimInstance->Montage_JumpToSection(FName("Equip"));
+		}
+		NewWeapon->PlayEquipSound(true);
+	}
+	CombatState = ECombatState::ECS_Unoccupied;
+	
+}
+
+int32 ASpaceRogueCharacter::GetEmptyInventorySlot()
+{
+	for (int32 i = 0; i < Inventory.Num(); i++)
+	{
+		if (Inventory[i] == nullptr)
+		{
+			return i;
+		}
+	}
+	if (Inventory.Num() < INVENTORY_CAPACITY)
+	{
+		return Inventory.Num();
+	}
+	return -1; //inventory is full
+}
+
+void ASpaceRogueCharacter::HighlightInventorySlot()
+{
+	const int32 EmptySlot{ GetEmptyInventorySlot() };
+	HighlightIconDelegate.Broadcast(EmptySlot, true);
+	HighlightedSlot = EmptySlot;
+}
+
+void ASpaceRogueCharacter::UnHighlightInventorySlot()
+{
+	HighlightIconDelegate.Broadcast(HighlightedSlot, false);
+	HighlightedSlot = -1;
 }
 
 int32 ASpaceRogueCharacter::GetInterpLocationIndex()
@@ -582,6 +707,14 @@ void ASpaceRogueCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInpu
 	PlayerInputComponent->BindAction("Select", IE_Released, this, &ASpaceRogueCharacter::SelectButtonReleased);
 
 	PlayerInputComponent->BindAction("ReloadButton", IE_Pressed, this, &ASpaceRogueCharacter::ReloadButtonPressed);
+
+
+	PlayerInputComponent->BindAction("FKey", IE_Pressed, this, &ASpaceRogueCharacter::FKeyPressed);
+	PlayerInputComponent->BindAction("1Key", IE_Pressed, this, &ASpaceRogueCharacter::OneKeyPressed);
+	PlayerInputComponent->BindAction("2Key", IE_Pressed, this, &ASpaceRogueCharacter::TwoKeyPressed);
+	PlayerInputComponent->BindAction("3Key", IE_Pressed, this, &ASpaceRogueCharacter::ThreeKeyPressed);
+	PlayerInputComponent->BindAction("4Key", IE_Pressed, this, &ASpaceRogueCharacter::FourKeyPressed);
+	PlayerInputComponent->BindAction("5Key", IE_Pressed, this, &ASpaceRogueCharacter::FiveKeyPressed);
 }
 
 float ASpaceRogueCharacter::GetCrosshairSpreadMultiplier() const
@@ -618,7 +751,17 @@ void ASpaceRogueCharacter::GetPickupItem(AItem* Item)
 	auto Weapon = Cast<AWeapon>(Item);
 	if (Weapon)
 	{
-		SwapWeapon(Weapon);
+		if (Inventory.Num() < INVENTORY_CAPACITY)
+		{
+			Weapon->SetSlotIndex(Inventory.Num());
+			Inventory.Add(Weapon);
+			Weapon->SetItemState(EItemState::EIS_PickedUp);
+		}
+		else
+		{
+			SwapWeapon(Weapon);
+		}
+		
 	}
 	auto Ammo = Cast<AAmmo>(Item);
 	if (Ammo)
@@ -693,10 +836,44 @@ void ASpaceRogueCharacter::TraceForItems()
 		if (ItemTraceResult.bBlockingHit)
 		{
 			TraceHitItem = Cast<AItem>(ItemTraceResult.Actor);
+			const auto TraceHitWeapon = Cast<AWeapon>(TraceHitItem);
+			if (TraceHitItem)
+			{
+				if (HighlightedSlot == -1)
+				{
+					//not currently highlighting a slot; highlight one
+					HighlightInventorySlot();
+				}
+			}
+			else
+			{
+				//is a slot being highlighted
+				if (HighlightedSlot != -1)
+				{
+					//unhighligte the slot
+					UnHighlightInventorySlot();
+
+				}
+			}
+			if (TraceHitItem && TraceHitItem->GetItemState() == EItemState::EIS_EquipInterping)
+			{
+				TraceHitItem = nullptr;
+			}
+
 			if (TraceHitItem && TraceHitItem->GetPickupWidget())
 			{
 				TraceHitItem->GetPickupWidget()->SetVisibility(true);
 				TraceHitItem->EnableCustomDepth();
+				if (Inventory.Num() >= INVENTORY_CAPACITY)
+				{
+					//inventory full
+					TraceHitItem->SetCharacterInventoryFull(true);
+				}
+				else
+				{
+					//inventory has room
+					TraceHitItem->SetCharacterInventoryFull(false);
+				}
 			}
 			if (TraceHitItemLastFrame)
 			{
@@ -720,7 +897,7 @@ void ASpaceRogueCharacter::AimingButtonPressed()
 {
 	bAiming = true;
 	
-	UE_LOG(LogTemp, Warning, TEXT("AIM!!!!!!!!!!!!"));
+	
 }
 
 void ASpaceRogueCharacter::AimingButtonReleased()

@@ -13,6 +13,7 @@ enum class ECombatState : uint8
 	ECS_Unoccupied UMETA(DisplayName = "Unoccupied"),
 	ECS_FireTimerInProgress UMETA(DisplayName = "FireTimerInProgress"),
 	ECS_Reloading UMETA(DisplayName="Reloading"),
+	ECS_Equipping UMETA(DisplayName = "Equipping"),
 
 	ECS_MAX UMETA(DisplayName = "DefaultMAX")
 };
@@ -29,6 +30,10 @@ struct FInterpLocation
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		int32 ItemCount;
 };
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FEquipItemDelegate, int32, CurrentSlotIndex, int32, NewSlotIndex);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FHighlightIconDelegate, int32, SlotIndex, int32, bStartAnimation);
+
 
 UCLASS()
 class SPACEROGUE_API ASpaceRogueCharacter : public ACharacter
@@ -66,7 +71,7 @@ protected:
 
 
 	class AWeapon* SpawnDefaultWeapon();
-	void EquipWeapon(AWeapon* WeaponToEquip);
+	void EquipWeapon(AWeapon* WeaponToEquip, bool bSwapping = false);
 
 	void DropWeapon();
 	void SelectButtonPressed();
@@ -109,6 +114,18 @@ protected:
 
 
 	void InitializeInterpLocations();
+
+	void FKeyPressed();
+	void OneKeyPressed();
+	void TwoKeyPressed();
+	void ThreeKeyPressed();
+	void FourKeyPressed();
+	void FiveKeyPressed();
+	void ExchangeInventoryItems(int32 CurrentItemIndex,int32 NewItemINdex);
+	int32 GetEmptyInventorySlot();
+
+	void HighlightInventorySlot(); 
+	
 
 
 private:
@@ -159,7 +176,9 @@ private:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	bool bAiming;
-
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	class UAnimMontage* EquipMontage;
 	
 	float CameraDefaultFOV;
 	float CameraZoomedFOV;
@@ -238,6 +257,13 @@ private:
 	UFUNCTION(BlueprintCallable)
 	void FinishReloading();
 
+	UFUNCTION(BlueprintCallable)
+	void FinishEquipping();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Reloading, meta = (AllowPrivateAccess = "true"))
+		bool bEquipping;
+
+
 	/** transform of the clip when we first grab the clip during reloading */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	FTransform ClipTransform;
@@ -286,6 +312,21 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Items, meta = (AllowPrivateAccess = "true"))
 		float EquipSoundResetTime;
 
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, Category = Inventory, meta = (AllowPrivateAccess = "true"))
+	TArray<AItem*> Inventory;
+
+	const int32 INVENTORY_CAPACITY{ 6 };
+
+	/** Delegate for sending slot information to inventory bar when equipping */
+	UPROPERTY(BlueprintAssignable, Category = Delegates, meta = (AllowPrivateAccess = "true"));
+	FEquipItemDelegate EquipItemDelegate;
+
+	UPROPERTY(BlueprintAssignable, Category = Delegates, meta = (AllowPrivateAccess = "true"));
+	FHighlightIconDelegate HighlightIconDelegate;
+
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, Category =Inventory, meta = (AllowPrivateAccess = "true"));
+	int32 HighlightedSlot;
+
 public:	
 	ASpaceRogueCharacter();
 	virtual void Tick(float DeltaTime) override;
@@ -315,6 +356,7 @@ public:
 
 	void StartPickupSoundTimer();
 	void StartEquipSoundTimer();
+	void UnHighlightInventorySlot();
 
 
 };
