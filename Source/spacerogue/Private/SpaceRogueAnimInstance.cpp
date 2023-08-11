@@ -5,7 +5,17 @@
 #include "SpaceRogueCharacter.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Weapon.h"
+#include "WeaponType.h"
 
+
+USpaceRogueAnimInstance::USpaceRogueAnimInstance():
+	
+	EquippedWeaponType(EWeaponType::EWT_MAX),
+	bShouldUseFABRIK(false)
+
+{}
+	
 
 void USpaceRogueAnimInstance::UpdateAnimationProperties(float DeltaTime)
 {
@@ -16,6 +26,8 @@ void USpaceRogueAnimInstance::UpdateAnimationProperties(float DeltaTime)
 
 	if (SpaceRogueCharacter)
 	{
+		bShouldUseFABRIK = SpaceRogueCharacter->GetCombatState() == ECombatState::ECS_Unoccupied || SpaceRogueCharacter->GetCombatState() == ECombatState::ECS_FireTimerInProgress;
+
 		FVector Velocity{ SpaceRogueCharacter->GetVelocity() };
 		Velocity.Z = 0;
 		Speed = Velocity.Size();
@@ -39,8 +51,13 @@ void USpaceRogueAnimInstance::UpdateAnimationProperties(float DeltaTime)
 		{
 			LastMovementOffsetYaw = MovementOffsetYaw;
 		}
+
 		bAiming = SpaceRogueCharacter->GetAiming();
-		
+		//check if character has a valid equipped weapon
+		if (SpaceRogueCharacter->GetEquippedWeapon())
+		{
+			EquippedWeaponType = SpaceRogueCharacter->GetEquippedWeapon()->GetWeaponType();
+		}
 		
 	}
 	

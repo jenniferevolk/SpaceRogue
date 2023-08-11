@@ -160,10 +160,8 @@ private:
 	float MouseAimingLookUpRate;
 
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-		class USoundCue* FireSound;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
-		class UParticleSystem* MuzzleFlash;
+	
+	
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	class UAnimMontage* HipFireMontage;
@@ -221,8 +219,7 @@ private:
 	bool bFireButtonPressed;
 	/** true when we can fire, false when waiting on timer */
 	bool bShouldFire;
-	/** seconds between bullets */
-	float AutomaticFireRate;
+	
 
 	/** sets a timer between gunshots */
 	FTimerHandle AutoFireTimer;
@@ -353,7 +350,8 @@ public:
 	
 	FORCEINLINE bool ShouldPlayPickupSound() const { return bShouldPlayPickupSound; }
 	FORCEINLINE bool ShouldPlayEquipSound() const { return bShouldPlayEquipSound; }
-
+	FORCEINLINE AWeapon* GetEquippedWeapon() const { return EquippedWeapon; }
+	FORCEINLINE ECombatState GetCombatState() const { return CombatState; }
 	void StartPickupSoundTimer();
 	void StartEquipSoundTimer();
 	void UnHighlightInventorySlot();

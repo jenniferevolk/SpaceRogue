@@ -54,6 +54,10 @@ void ASpaceRogueCharacter::FinishReloading()
 void ASpaceRogueCharacter::FinishEquipping()
 {
 	CombatState = ECombatState::ECS_Unoccupied;
+	//if (bAiminghButtonPressed)
+	//{
+	//	Aim();
+	//}
 }
 void ASpaceRogueCharacter::ResetPickupSoundTimer()
 {
@@ -94,7 +98,6 @@ ASpaceRogueCharacter::ASpaceRogueCharacter():
 	bFiringBullet(false),
 	bShouldTraceForItems(false),
 	//Automatic fire variables
-	AutomaticFireRate(0.1f),
 	bShouldFire(true),
 	bFireButtonPressed(false),
 	// camera interp location variables
@@ -344,20 +347,22 @@ void ASpaceRogueCharacter::FireButtonReleased()
 void ASpaceRogueCharacter::StartFireTimer()
 {
 	CombatState = ECombatState::ECS_FireTimerInProgress;
+	if (EquippedWeapon == nullptr) return;
 	GetWorldTimerManager().SetTimer(
 		AutoFireTimer,
 		this,
 		&ASpaceRogueCharacter::AutoFireReset,
-		AutomaticFireRate);
+		EquippedWeapon->GetAutoFireRate());
 	
 }
 
 void ASpaceRogueCharacter::AutoFireReset()
 {
 	CombatState = ECombatState::ECS_Unoccupied;
+	if (EquippedWeapon == nullptr) return;
 	if (WeaponHasAmmo())
 	{
-		if (bFireButtonPressed)
+		if (bFireButtonPressed && EquippedWeapon->GetAutomatic())
 		{
 			FireWeapon();
 		}
@@ -382,9 +387,9 @@ bool ASpaceRogueCharacter::WeaponHasAmmo()
 
 void ASpaceRogueCharacter::PlayFireSound()
 {
-	if (FireSound)
+	if (EquippedWeapon->GetFireSound())
 	{
-		UGameplayStatics::PlaySound2D(this, FireSound);
+		UGameplayStatics::PlaySound2D(this, EquippedWeapon->GetFireSound());
 	}
 }
 
@@ -395,9 +400,9 @@ void ASpaceRogueCharacter::SendBullet()
 	{
 		
 		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(EquippedWeapon->GetItemMesh());
-		if (MuzzleFlash)
+		if (EquippedWeapon->GetMuzzleFlash())
 		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), EquippedWeapon->GetMuzzleFlash(), SocketTransform);
 		}
 
 		FHitResult BeamHitResult;
@@ -582,6 +587,10 @@ void ASpaceRogueCharacter::ExchangeInventoryItems(int32 CurrentItemIndex, int32 
 		(CombatState == ECombatState::ECS_Unoccupied || CombatState == ECombatState::ECS_Equipping);
 	if (bCanExchangeItems)
 	{
+		//if (bAiming)
+		//{
+		//	StopAiming();
+		//}
 		
 		auto OldEquippedWeapon = EquippedWeapon;
 		auto NewWeapon = Cast<AWeapon>(Inventory[NewItemIndex]);
@@ -822,6 +831,10 @@ void ASpaceRogueCharacter::FireWeapon()
 		PlayGunfireMontage();
 		EquippedWeapon->DecrementAmmo();
 		StartFireTimer();
+		if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Pistol)
+		{
+			EquippedWeapon->StartSlideTimer();
+		}
 	}
 }
 
@@ -896,6 +909,11 @@ void ASpaceRogueCharacter::TraceForItems()
 void ASpaceRogueCharacter::AimingButtonPressed()
 {
 	bAiming = true;
+	//if (CombatState != ECombatState::ECS_Reloading && CombatState != ECombatState::ECS_Equipping)
+	//{
+	//	Aim();
+	//}
+
 	
 	
 }

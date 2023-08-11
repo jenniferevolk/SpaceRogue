@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Animation/AnimInstance.h"
+#include "WeaponType.h"
 #include "SpaceRogueAnimInstance.generated.h"
 
 /**
@@ -14,6 +15,7 @@ class SPACEROGUE_API USpaceRogueAnimInstance : public UAnimInstance
 {
 	GENERATED_BODY()
 public:
+	USpaceRogueAnimInstance();
 	UFUNCTION(BlueprintCallable)
 	void UpdateAnimationProperties(float DeltaTime);
 
@@ -43,7 +45,12 @@ private:
 	UPROPERTY(EditAnyWhere, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess = "true"))
 		bool bAiming;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	EWeaponType EquippedWeaponType;
 
+	//dont use fabrik when equipping or reloading
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	bool bShouldUseFABRIK;
 
 
 };
