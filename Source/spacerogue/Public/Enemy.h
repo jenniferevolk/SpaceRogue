@@ -20,8 +20,27 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	/** called when something overlaps with the agrosphere */
+	UFUNCTION(BlueprintNativeEvent)
+	void ShowHealthBar();
+	void ShowHealthBar_Implementation();
 
+	UFUNCTION(BlueprintImplementableEvent)
+	void HideHealthBar();
+
+	void Die();
+	void PlayHitMontage(FName Section, float PlayRate = 1.0f);
+	void ResetHitReactTimer();
+
+	UFUNCTION(BlueprintCallable)
+	void StoreHitNumber(UUserWidget* HitNumber, FVector Location);
+
+	UFUNCTION()
+	void DestroyHitNumber(UUserWidget* HitNumber);
+	void UpdateHitNumbers();
+
+private:
+	
+	/** called when something overlaps with the agrosphere */
 	UFUNCTION()
 	void AgroSphereOverlap(
 		UPrimitiveComponent* OverlappedComponent,
@@ -64,8 +83,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 		class USoundCue* DeathSound;
 
-	void PlayHitMontage(FName Section, float PlayRate = 1.0f);
-	void ResetHitReactTimer();
 
 	UFUNCTION(BlueprintCallable)
 	void PlayAttackMontage(FName Section, float PlayRate);
@@ -77,6 +94,14 @@ protected:
 	float Health;
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	float MaxHealth;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	FString HeadBone;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float HealthBarDisplayTime;
+
+	FTimerHandle HealthBarTimer;
 
 	UPROPERTY(EditAnywhere,Category="Behavior Tree", meta = (AllowPrivateAccess = "true"))
 	class UBehaviorTree* BehaviorTree;
@@ -95,8 +120,6 @@ protected:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite,Category=Combat,meta=(AllowPrivateAccess))
 	class USphereComponent* AgroSphere;
 
-	/** quick death number of times hit */
-	int8 numberOfHits;
 
 	/** True when playing the get hit animation */
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
@@ -130,6 +153,14 @@ protected:
 
 	bool bCanHitReact;
 
+
+	UPROPERTY(VisibleAnywhere,Category=Combat, meta = (AllowPrivateAccess = "true"))
+	TMap<UUserWidget*, FVector>HitNumbers;
+
+	UPROPERTY(EditAnywhere, Category = Combat, meta = (AllowPrivateAccess = "true"))
+	float HitNumberDestroyTime;
+
+
 	/** Montage containing attack animations */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess = "true"))
 	UAnimMontage* AttackMontage;
@@ -150,7 +181,12 @@ public:
 
 	virtual void BulletHit_Implementation(FHitResult HitResult) override;
 
+	virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+	FORCEINLINE FString GetHeadBone() const { return HeadBone; }
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void ShowHitNumber(int32 Damage, FVector HitLocation,bool bHeadShot);
 	FORCEINLINE UBehaviorTree* GetBehaviorTree() const { return BehaviorTree; }
 
-
+	
 };

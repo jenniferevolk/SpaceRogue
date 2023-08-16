@@ -17,6 +17,7 @@
 #include "Components/SphereComponent.h"
 #include "Components/BoxComponent.h"
 #include "Ammo.h"
+#include "Enemy.h"
 void ASpaceRogueCharacter::FinishReloading()
 {
 	
@@ -417,6 +418,37 @@ void ASpaceRogueCharacter::SendBullet()
 				if (BulletHitInterface)
 				{
 					BulletHitInterface->BulletHit_Implementation(BeamHitResult);
+				}
+				AEnemy* HitEnemy = Cast<AEnemy>(BeamHitResult.Actor.Get());
+				if (HitEnemy)
+				{
+					int32 Damage{};
+					if (BeamHitResult.BoneName.ToString() == HitEnemy->GetHeadBone())
+					{
+						//head shot
+						Damage = EquippedWeapon->GetHeadShotDamage();
+						UGameplayStatics::ApplyDamage(
+							BeamHitResult.Actor.Get(),
+							Damage,
+							GetController(),
+							this,
+							UDamageType::StaticClass());
+							HitEnemy->ShowHitNumber(Damage, BeamHitResult.Location,true);
+					}
+					else
+					{
+						//body shot
+						Damage = EquippedWeapon->GetDamage();
+						UGameplayStatics::ApplyDamage(
+							BeamHitResult.Actor.Get(),
+							Damage,
+							GetController(),
+							this,
+							UDamageType::StaticClass());
+							HitEnemy->ShowHitNumber(Damage, BeamHitResult.Location,false);
+					}
+					
+					
 				}
 			}
 			else

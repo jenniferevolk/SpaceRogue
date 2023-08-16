@@ -6,6 +6,8 @@
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundCue.h"
 #include "Particles/ParticleSystemComponent.h"
+#include "Blueprint/UserWidget.h"
+
 #include "Kismet/KismetMathLibrary.h"
 #include "DrawDebugHelpers.h"
 #include "EnemyController.h"
@@ -26,7 +28,9 @@ AEnemy::AEnemy() :
 	AttackLFast(TEXT("AttackLFast")),
 	AttackRFast(TEXT("AttackRFast")),
 	AttackL(TEXT("AttackL")),
-	AttackR(TEXT("AttackR"))
+	AttackR(TEXT("AttackR")),
+	HealthBarDisplayTime(4.f),
+	HitNumberDestroyTime(1.5f)
 
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -74,6 +78,27 @@ void AEnemy::BeginPlay()
 		EnemyController->RunBehaviorTree(BehaviorTree);
 	}
 
+}
+
+void AEnemy::ShowHealthBar_Implementation()
+{
+	GetWorldTimerManager().ClearTimer(HealthBarTimer);
+	GetWorldTimerManager().SetTimer(
+		HealthBarTimer,
+		this,
+		&AEnemy::HideHealthBar,
+		HealthBarDisplayTime);
+}
+
+void AEnemy::Die()
+{
+	HideHealthBar();
+	if (DeathSound)
+	{
+		UGameplayStatics::PlaySoundAtLocation(this, DeathSound, GetActorLocation());
+	}
+	
+	Destroy();
 }
 
 void AEnemy::AgroSphereOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
@@ -147,13 +172,52 @@ void AEnemy::ResetHitReactTimer()
 	bCanHitReact = true;
 }
 
+void AEnemy::StoreHitNumber(UUserWidget* HitNumber, FVector Location)
+{
+	HitNumbers.Add(HitNumber, Location);
+	FTimerHandle HitNumberTimer;
+	FTimerDelegate HitNumberDelegate;
+	HitNumberDelegate.BindUFunction(this, FName("DestroyHitNumber"), HitNumber);
+	GetWorld()->GetTimerManager().SetTimer(HitNumberTimer, HitNumberDelegate, HitNumberDestroyTime, false);
+}
+
+void AEnemy::DestroyHitNumber(UUserWidget* HitNumber)
+{
+	HitNumbers.Remove(HitNumber);
+	HitNumber->RemoveFromParent();
+}
+
+void AEnemy::UpdateHitNumbers()
+{
+	
+	for (auto& HitPair : HitNumbers)
+	{ 
+		UUserWidget* HitNumber{ HitPair.Key };
+		const FVector Location{ HitPair.Value };
+
+		FVector2D ScreenPosition;
+		UGameplayStatics::ProjectWorldToScreen(GetWorld()->GetFirstPlayerController(), Location, ScreenPosition);
+		HitNumber->SetPositionInViewport(ScreenPosition);
+	}
+}
+
 void AEnemy::PlayAttackMontage(FName Section, float PlayRate)
 {
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (AnimInstance && AttackMontage)
+	if (bCanHitReact)
 	{
-		AnimInstance->Montage_Play(AttackMontage, PlayRate);
-		AnimInstance->Montage_JumpToSection(Section, AttackMontage);
+		UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+		if (AnimInstance && AttackMontage)
+		{
+			AnimInstance->Montage_Play(AttackMontage, PlayRate);
+			AnimInstance->Montage_JumpToSection(Section, AttackMontage);
+		}
+		bCanHitReact = false;
+		const float HitReactTime{ FMath::FRandRange(HitReactTimeMin,HitReactTimeMax) };
+		GetWorldTimerManager().SetTimer(
+			HitReactTimer,
+			this,
+			&AEnemy::ResetHitReactTimer,
+			HitReactTime);
 	}
 }
 
@@ -185,6 +249,7 @@ FName AEnemy::GetAttackSectionName()
 void AEnemy::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	UpdateHitNumbers();
 
 }
 
@@ -206,7 +271,7 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult)
 	{
 		UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, HitResult.Location,FRotator(0.f),true);
 	}
-	
+	ShowHealthBar();
 	const float Stunned = FMath::FRandRange(0.f, 1.f);
 	if (Stunned <= StunChance)
 	{
@@ -214,21 +279,22 @@ void AEnemy::BulletHit_Implementation(FHitResult HitResult)
 		SetStunned(true);
 	}
 
-	// -----quick and dirty death routine (temporary) 
-	numberOfHits += 1;
-	if (numberOfHits > 3)
+
+}
+
+float AEnemy::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	if (Health - DamageAmount <= 0.f)
 	{
-		if (DeathSound)
-		{
-			UGameplayStatics::PlaySoundAtLocation(this, DeathSound, GetActorLocation());
-		}
-		if (DeathParticles)
-		{
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), DeathParticles, HitResult.Location, FRotator(0.f), true);
-		}
-		Destroy();
+		Health = 0.f;
+		Die();
+	}
+	else
+	{
+		Health -= DamageAmount;
 	}
 
+	return DamageAmount;
 }
 
 
