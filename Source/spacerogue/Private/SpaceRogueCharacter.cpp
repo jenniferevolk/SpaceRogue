@@ -18,9 +18,12 @@
 #include "Components/BoxComponent.h"
 #include "Ammo.h"
 #include "Enemy.h"
+#include "EnemyController.h"
+#include "BehaviorTree/BlackboardComponent.h"
+
 void ASpaceRogueCharacter::FinishReloading()
 {
-	
+	if (CombatState == ECombatState::ECS_Stunned) return;
 	CombatState = ECombatState::ECS_Unoccupied;
 	if (EquippedWeapon == nullptr) return;
 	const auto AmmoType{ EquippedWeapon->GetAmmoType() };
@@ -54,10 +57,11 @@ void ASpaceRogueCharacter::FinishReloading()
 }
 void ASpaceRogueCharacter::FinishEquipping()
 {
+	if (CombatState == ECombatState::ECS_Stunned) return;
 	CombatState = ECombatState::ECS_Unoccupied;
 	//if (bAiminghButtonPressed)
 	//{
-	//	Aim();
+	//	bAiming = true;
 	//}
 }
 void ASpaceRogueCharacter::ResetPickupSoundTimer()
@@ -113,7 +117,10 @@ ASpaceRogueCharacter::ASpaceRogueCharacter():
 	bShouldPlayEquipSound(true),
 	PickupSoundResetTime(0.2f),
 	EquipSoundResetTime(0.2f),
-	HighlightedSlot(-1)
+	HighlightedSlot(-1),
+	Health(100.0f),
+	MaxHealth(100.0f),
+	StunChance(.25f)
 
 	
 	
@@ -190,6 +197,30 @@ void ASpaceRogueCharacter::BeginPlay()
 	InitializeInterpLocations();
 }
 
+float ASpaceRogueCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+							
+{
+	if (Health - DamageAmount <= 0.f)
+	{
+		Health = 0.f;
+		Die();
+
+		auto EnemyController = Cast<AEnemyController>(EventInstigator);
+			if (EnemyController)
+			{
+				EnemyController->GetBlackboardComponent()->SetValueAsBool(
+					FName(TEXT("CharacterDead")),
+					true
+
+				);
+			}
+	}
+	else
+	{
+		Health -= DamageAmount;
+	}
+	return DamageAmount;
+}
 
 bool ASpaceRogueCharacter::GetBeamEndLocation(
 	const FVector& MuzzleSocketLocation, 
@@ -347,6 +378,7 @@ void ASpaceRogueCharacter::FireButtonReleased()
 
 void ASpaceRogueCharacter::StartFireTimer()
 {
+	if (CombatState == ECombatState::ECS_Stunned) return;
 	CombatState = ECombatState::ECS_FireTimerInProgress;
 	if (EquippedWeapon == nullptr) return;
 	GetWorldTimerManager().SetTimer(
@@ -666,10 +698,45 @@ void ASpaceRogueCharacter::HighlightInventorySlot()
 	HighlightedSlot = EmptySlot;
 }
 
+void ASpaceRogueCharacter::EndStun()
+{
+	CombatState = ECombatState::ECS_Unoccupied;
+}
+
+void ASpaceRogueCharacter::Die()
+{
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && DeathMontage)
+	{
+		AnimInstance->Montage_Play(DeathMontage);
+	}
+}
+
+void ASpaceRogueCharacter::FinishDeath()
+{
+	GetMesh()->bPauseAnims = true;
+	APlayerController* PC=UGameplayStatics::GetPlayerController(this, 0);
+	if (PC)
+	{
+		DisableInput(PC);
+	}
+}
+
 void ASpaceRogueCharacter::UnHighlightInventorySlot()
 {
 	HighlightIconDelegate.Broadcast(HighlightedSlot, false);
 	HighlightedSlot = -1;
+}
+
+void ASpaceRogueCharacter::Stun()
+{
+	if (Health <= 0.f) return;
+	CombatState = ECombatState::ECS_Stunned;
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (AnimInstance && HitReactMontage)
+	{
+		AnimInstance->Montage_Play(HitReactMontage);
+	}
 }
 
 int32 ASpaceRogueCharacter::GetInterpLocationIndex()
@@ -940,11 +1007,11 @@ void ASpaceRogueCharacter::TraceForItems()
 
 void ASpaceRogueCharacter::AimingButtonPressed()
 {
-	bAiming = true;
-	//if (CombatState != ECombatState::ECS_Reloading && CombatState != ECombatState::ECS_Equipping)
-	//{
-	//	Aim();
-	//}
+	
+	if (CombatState != ECombatState::ECS_Reloading && CombatState != ECombatState::ECS_Equipping && CombatState != ECombatState::ECS_Stunned)
+	{
+		bAiming = true;
+	}
 
 	
 	
