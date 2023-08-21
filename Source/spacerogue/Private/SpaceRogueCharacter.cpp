@@ -449,7 +449,7 @@ void ASpaceRogueCharacter::SendBullet()
 				IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(BeamHitResult.Actor.Get());
 				if (BulletHitInterface)
 				{
-					BulletHitInterface->BulletHit_Implementation(BeamHitResult);
+					BulletHitInterface->BulletHit_Implementation(BeamHitResult,this,GetController());
 				}
 				AEnemy* HitEnemy = Cast<AEnemy>(BeamHitResult.Actor.Get());
 				if (HitEnemy)
@@ -705,6 +705,7 @@ void ASpaceRogueCharacter::EndStun()
 
 void ASpaceRogueCharacter::Die()
 {
+	bDead = true;
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
 	if (AnimInstance && DeathMontage)
 	{
